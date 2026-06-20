@@ -1325,6 +1325,8 @@ func handleLaunch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	reportActivity("profile_launched", "Profile "+req.ProfileID+" launched")
+
 	extNames := []string{}
 	if result != nil && result.ExtensionsLoaded != nil {
 		extNames = result.ExtensionsLoaded
@@ -1390,11 +1392,13 @@ func handleElectronNotify(w http.ResponseWriter, r *http.Request) {
 			processes[req.ProfileID] = p
 			mu.Unlock()
 			log.Printf("Electron launched profile %s with PID %d", req.ProfileID, req.PID)
+			reportActivity("profile_launched", "Profile "+req.ProfileID+" launched (PID "+strconv.Itoa(req.PID)+")")
 		}
 	} else if req.Action == "stopped" {
 		mu.Lock()
 		delete(processes, req.ProfileID)
 		mu.Unlock()
+		reportActivity("profile_stopped", "Profile "+req.ProfileID+" stopped")
 		profileDir := filepath.Join(dataDir, "profiles", req.ProfileID)
 		go uploadProfileSync(req.ProfileID, profileDir)
 	}
@@ -1419,6 +1423,7 @@ func handleStop(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	reportActivity("profile_stopped", "Profile "+req.ProfileID+" stopped")
 	jsonOK(w, map[string]string{"status": "stopped", "profile_id": req.ProfileID})
 }
 
@@ -1516,7 +1521,93 @@ func handleOpenExtensionsFolder(w http.ResponseWriter, r *http.Request) {
 // License validation
 // ---------------------------------------------------------------------------
 
-const licenseAPIBase = "https://nickets.xyz/license"
+const licenseAPIBase = "https://nickets.xyz/Ching"
+
+const chingAPIBase = "https://nickets.xyz/Ching"
+
+func reportActivity(action, details string) {
+	key := ""
+	keyBytes, err := os.ReadFile(licenseFilePath())
+	if err == nil {
+		key = strings.TrimSpace(string(keyBytes))
+	}
+	if key == "" {
+		return
+	}
+	machineID := getMachineID()
+	payload, _ := json.Marshal(map[string]string{
+		"license_key": key,
+		"machine_id":  machineID,
+		"action":      action,
+		"details":     details,
+	})
+	go func() {
+		resp, err := http.Post(chingAPIBase+"/api/activity", "application/json", bytes.NewReader(payload))
+		if err != nil {
+			log.Printf("Activity report failed: %v", err)
+			return
+		}
+		resp.Body.Close()
+	}()
+}
+
+func sendHeartbeat() {
+	key := ""
+	keyBytes, err := os.ReadFile(licenseFilePath())
+	if err == nil {
+		key = strings.TrimSpace(string(keyBytes))
+	}
+	if key == "" {
+		return
+	}
+	machineID := getMachineID()
+	mu.Lock()
+	activeCount := len(processes)
+	mu.Unlock()
+	payload, _ := json.Marshal(map[string]interface{}{
+		"license_key":     key,
+		"machine_id":      machineID,
+		"profiles_active": activeCount,
+		"app_version":     "1.0.0",
+	})
+	resp, err := http.Post(chingAPIBase+"/api/heartbeat", "application/json", bytes.NewReader(payload))
+	if err != nil {
+		log.Printf("Heartbeat failed: %v", err)
+		return
+	}
+	resp.Body.Close()
+}
+
+func startHeartbeatLoop() {
+	sendHeartbeat()
+	ticker := time.NewTicker(60 * time.Second)
+	go func() {
+		for range ticker.C {
+			sendHeartbeat()
+		}
+	}()
+}
+
+func reportSessionClose() {
+	key := ""
+	keyBytes, err := os.ReadFile(licenseFilePath())
+	if err == nil {
+		key = strings.TrimSpace(string(keyBytes))
+	}
+	if key == "" {
+		return
+	}
+	machineID := getMachineID()
+	payload, _ := json.Marshal(map[string]string{
+		"license_key": key,
+		"machine_id":  machineID,
+	})
+	resp, err := http.Post(chingAPIBase+"/api/session/close", "application/json", bytes.NewReader(payload))
+	if err != nil {
+		return
+	}
+	resp.Body.Close()
+}
 
 func licenseFilePath() string {
 	return filepath.Join(dataDir, ".license")
@@ -1624,6 +1715,52 @@ func mustJSON(v interface{}) []byte {
 	return b
 }
 
+func trackProxyActivity(method, path string, body []byte) {
+	var action, details string
+	if strings.Contains(path, "/profiles") {
+		switch method {
+		case http.MethodPost:
+			action = "profile_created"
+			var d map[string]interface{}
+			if json.Unmarshal(body, &d) == nil {
+				if name, ok := d["name"].(string); ok {
+					details = "Created profile: " + name
+				} else {
+					details = "Created new profile"
+				}
+			}
+		case http.MethodDelete:
+			action = "profile_deleted"
+			parts := strings.Split(path, "/")
+			if len(parts) > 0 {
+				details = "Deleted profile: " + parts[len(parts)-1]
+			}
+		case http.MethodPut, http.MethodPatch:
+			action = "profile_moved"
+			var d map[string]interface{}
+			if json.Unmarshal(body, &d) == nil {
+				if fid, ok := d["folder_id"].(string); ok && fid != "" {
+					details = "Moved profile to folder"
+				} else {
+					details = "Updated profile"
+				}
+			}
+		}
+	} else if strings.Contains(path, "/folders") {
+		switch method {
+		case http.MethodPost:
+			action = "folder_created"
+			details = "Created new folder"
+		case http.MethodDelete:
+			action = "folder_deleted"
+			details = "Deleted folder"
+		}
+	}
+	if action != "" {
+		reportActivity(action, details)
+	}
+}
+
 // ---------------------------------------------------------------------------
 // Proxy handler — forwards unmatched /api/* requests to remote server
 // ---------------------------------------------------------------------------
@@ -1646,15 +1783,30 @@ func handleProxy(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("Proxy %s %s -> %s", r.Method, r.URL.Path, targetURL)
 
+	// Track DELETE operations for activity logging
+	if r.Method == http.MethodDelete {
+		path := r.URL.Path
+		if strings.Contains(path, "/profiles") || strings.Contains(path, "/folders") {
+			go trackProxyActivity(r.Method, path, nil)
+		}
+	}
+
 	// Read full body so we can set Content-Length properly
+	var bodyBytes []byte
 	var bodyReader io.Reader
 	if r.Method == http.MethodPost || r.Method == http.MethodPut || r.Method == http.MethodPatch {
-		bodyBytes, err := io.ReadAll(r.Body)
+		var err error
+		bodyBytes, err = io.ReadAll(r.Body)
 		if err != nil {
 			jsonError(w, fmt.Sprintf("Failed to read body: %v", err), 500)
 			return
 		}
 		bodyReader = bytes.NewReader(bodyBytes)
+
+		path := r.URL.Path
+		if strings.Contains(path, "/profiles") || strings.Contains(path, "/folders") {
+			go trackProxyActivity(r.Method, path, bodyBytes)
+		}
 	}
 
 	proxyReq, err := http.NewRequest(r.Method, targetURL, bodyReader)
@@ -1817,6 +1969,7 @@ func main() {
 	log.Printf("Server mode: %v", serverMode)
 
 	checkChromium()
+	startHeartbeatLoop()
 
 	mux := http.NewServeMux()
 
@@ -1839,6 +1992,7 @@ func main() {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.WriteHeader(200)
 		go func() {
+			reportSessionClose()
 			time.Sleep(500 * time.Millisecond)
 			log.Println("App window closed, shutting down...")
 			os.Exit(0)
