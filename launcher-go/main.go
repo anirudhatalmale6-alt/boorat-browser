@@ -1671,7 +1671,7 @@ func sendHeartbeat() {
 		"license_key":     key,
 		"machine_id":      machineID,
 		"profiles_active": activeCount,
-		"app_version":     "1.2.0",
+		"app_version":     "1.3.0",
 	})
 	resp, err := http.Post(chingAPIBase+"/api/heartbeat", "application/json", bytes.NewReader(payload))
 	if err != nil {
