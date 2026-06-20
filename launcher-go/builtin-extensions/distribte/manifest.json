@@ -1,0 +1,202 @@
+{
+    "manifest_version": 3,
+    "name": "Distribte",
+    "description": "Distribte",
+    "version": "3.2.2.2",
+    "icons": {
+        "16": "images/color/icon16.png",
+        "48": "images/color/icon48.png",
+        "128": "images/color/icon128.png"
+    },
+    "background": {
+        "service_worker": "js/background.js"
+    },
+    "permissions": [
+        "storage",
+        "tabs",
+        "notifications",
+        "cookies"
+    ],
+    "host_permissions": [
+        "https://api.distribteportal.com/*",
+        "https://distribteportal.com/*",
+        "https://whoerip.com/*",
+        "https://*.whoerip.com/*"
+    ],
+    "action": {
+        "default_icon": {
+            "16": "images/color/icon16.png",
+            "48": "images/color/icon48.png",
+            "128": "images/color/icon128.png"
+        },
+        "default_popup": "popup.html"
+    },
+    "commands": {
+        "_execute_action": {
+            "suggested_key": {
+                "default": "Alt+Shift+X"
+            },
+            "description": "Open Distribte and auto-login"
+        }
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "https://boorat.xyz/*"
+            ],
+            "js": [
+                "/js/wake-bg.js"
+            ],
+            "run_at": "document_end",
+            "all_frames": false
+        },
+        {
+            "matches": [
+                "https://www.ticketmaster.com/*",
+                "https://www.ticketmaster.ca/*",
+                "https://www.ticketmaster.com.au/*",
+                "https://www.ticketmaster.co.uk/*",
+                "https://checkout.ticketmaster.com/*",
+                "https://checkout.ticketmaster.ca/*",
+                "https://checkout.ticketmaster.com.au/*",
+                "https://checkout.ticketmaster.co.uk/*",
+                "https://www.livenation.com/*",
+                "https://www.livenation.ca/*",
+                "https://www.livenation.com.au/*",
+                "https://www.livenation.co.uk/*",
+                "https://concerts.livenation.com/*",
+                "https://concerts.livenation.ca/*",
+                "https://concerts.livenation.com.au/*",
+                "https://concerts.livenation.co.uk/*",
+                "https://checkout.livenation.com/*",
+                "https://checkout.livenation.ca/*",
+                "https://checkout.livenation.com.au/*",
+                "https://checkout.livenation.co.uk/*",
+                "https://tix.axs.com/*",
+                "https://www.axs.com/*",
+                "https://seatgeek.com/*",
+                "https://etix.com/*",
+                "https://*.etix.com/*",
+                "https://mlb.tickets.com/*",
+                "https://*.evenue.net/*"
+            ],
+            "js": [
+                "/js/content.js"
+            ],
+            "css": [
+                "/css/styles.css"
+            ]
+        },
+        {
+            "matches": [
+                "https://etix.com/*",
+                "https://*.etix.com/*"
+            ],
+            "js": [
+                "/js/content_etix_inject_scripts.js"
+            ],
+            "run_at": "document_start"
+        },
+        {
+            "matches": [
+                "https://seatgeek.com/*"
+            ],
+            "js": [
+                "/js/content_sg_inject_scripts.js"
+            ],
+            "run_at": "document_start"
+        },
+        {
+            "matches": [
+                "https://tix.axs.com/*",
+                "https://www.axs.com/*"
+            ],
+            "js": [
+                "/js/content_axs_inject_scripts.js"
+            ],
+            "run_at": "document_start"
+        },
+        {
+            "matches": [
+                "https://checkout.ticketmaster.com/*",
+                "https://checkout.ticketmaster.ca/*",
+                "https://checkout.ticketmaster.com.au/*",
+                "https://checkout.ticketmaster.co.uk/*",
+                "https://checkout.livenation.com/*",
+                "https://checkout.livenation.ca/*",
+                "https://checkout.livenation.com.au/*",
+                "https://checkout.livenation.co.uk/*",
+                "https://www.ticketmaster.com/checkout/*",
+                "https://www.ticketmaster.ca/checkout/*",
+                "https://www.ticketmaster.com.au/checkout/*",
+                "https://www.ticketmaster.co.uk/checkout/*",
+                "https://tix.axs.com/*",
+                "https://www.axs.com/*",
+                "https://seatgeek.com/*",
+                "https://etix.com/*",
+                "https://*.etix.com/*",
+                "https://mlb.tickets.com/*",
+                "https://*.evenue.net/*"
+            ],
+            "js": [
+                "/js/toast.js"
+            ],
+            "css": [
+                "/css/styles.css"
+            ]
+        },
+        {
+            "matches": [
+                "https://auth.ticketmaster.com/*",
+                "https://auth.ticketmaster.ca/*",
+                "https://auth.ticketmaster.com.au/*",
+                "https://auth.ticketmaster.co.uk/*",
+                "https://boxoffice.etix.com/ticket/login/*",
+                "https://seatgeek.com/*",
+                "https://mlb.tickets.com/*"
+            ],
+            "js": [
+                "/js/parse_service_email.js"
+            ],
+            "all_frames": true
+        }
+    ],
+    "web_accessible_resources": [
+        {
+            "resources": [
+                "popup.html",
+                "/js/inject_email_parser.js",
+                "/js/inject_get_digital_data.js"
+            ],
+            "matches": [
+                "<all_urls>"
+            ]
+        },
+        {
+            "resources": [
+                "/js/inject_etix_fetch_listener.js"
+            ],
+            "matches": [
+                "https://*.etix.com/*",
+                "https://etix.com/*"
+            ]
+        },
+        {
+            "resources": [
+                "/js/inject_sg_fetch_listener.js"
+            ],
+            "matches": [
+                "https://seatgeek.com/*"
+            ]
+        },
+        {
+            "resources": [
+                "/js/inject_axs_fetch_listener.js"
+            ],
+            "matches": [
+                "https://tix.axs.com/*",
+                "https://www.axs.com/*"
+            ]
+        }
+    ]
+}

@@ -1,0 +1,47 @@
+name: Build BOORAT
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build Go server binary
+        working-directory: launcher-go
+        env:
+          GOOS: windows
+          GOARCH: amd64
+          CGO_ENABLED: '0'
+        run: go build -ldflags="-s -w -H windowsgui" -o boorat-server.exe main.go
+
+      - name: Install Electron dependencies
+        working-directory: electron
+        run: npm install
+
+      - name: Build and publish Electron installer
+        working-directory: electron
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx electron-builder --win --x64 --publish always
+
+      - name: List build output
+        run: dir electron\dist\
+        shell: cmd
