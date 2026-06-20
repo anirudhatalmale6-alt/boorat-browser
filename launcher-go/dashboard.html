@@ -803,8 +803,8 @@
         <span class="rp-section-title">Quick Actions</span>
       </div>
       <div class="rp-quick-actions">
-        <div class="rp-quick-btn" onclick="App.viewLog()">
-          <span class="rp-quick-btn-icon">&#128196;</span> View Log
+        <div class="rp-quick-btn" onclick="App.showCreateModal()">
+          <span class="rp-quick-btn-icon">&#9889;</span> Fast Open
         </div>
         <div class="rp-quick-btn" onclick="App.refresh()">
           <span class="rp-quick-btn-icon">&#8635;</span> Refresh
@@ -812,15 +812,57 @@
         <div class="rp-quick-btn" onclick="App.importProfile()">
           <span class="rp-quick-btn-icon">&#8615;</span> Import
         </div>
-        <div class="rp-quick-btn" onclick="App.viewLog()">
-          <span class="rp-quick-btn-icon">&#8943;</span> More
+        <div class="rp-quick-btn" onclick="App.toggleAddFolder()">
+          <span class="rp-quick-btn-icon">&#128194;</span> Create Folder
         </div>
+      </div>
+    </div>
+
+    <div class="rp-card" id="rpProxyCard">
+      <div class="rp-section-header" style="margin-bottom:12px;">
+        <span class="rp-section-title">Boorat Proxy</span>
+        <span class="rp-section-link" style="cursor:pointer;color:#10b981;" id="rpProxyStatus">&#9679; Active</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.15);border-radius:8px;">
+          <div>
+            <div style="font-size:12px;font-weight:600;color:#e2e8f0;">Residential</div>
+            <div style="font-size:10px;color:#6b7280;">US, UK, DE, CA, AU</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:13px;font-weight:700;color:#10b981;" id="rpResProxyCount">0</div>
+            <div style="font-size:10px;color:#6b7280;">proxies</div>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:rgba(124,58,237,0.06);border:1px solid rgba(124,58,237,0.15);border-radius:8px;">
+          <div>
+            <div style="font-size:12px;font-weight:600;color:#e2e8f0;">Datacenter</div>
+            <div style="font-size:10px;color:#6b7280;">High speed, low latency</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:13px;font-weight:700;color:#a78bfa;" id="rpDcProxyCount">0</div>
+            <div style="font-size:10px;color:#6b7280;">proxies</div>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.15);border-radius:8px;">
+          <div>
+            <div style="font-size:12px;font-weight:600;color:#e2e8f0;">Mobile</div>
+            <div style="font-size:10px;color:#6b7280;">4G/5G rotating</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:13px;font-weight:700;color:#f59e0b;" id="rpMobProxyCount">0</div>
+            <div style="font-size:10px;color:#6b7280;">proxies</div>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:10px;text-align:center;">
+        <div style="font-size:10px;color:#4b5563;">Auto-assigned when using Boorat Proxy mode</div>
       </div>
     </div>
 
     <div class="rp-card">
       <div class="rp-section-header">
-        <span class="rp-section-title">Activity</span>
+        <span class="rp-section-title">Recent Activity</span>
         <span class="rp-section-link">View all</span>
       </div>
       <div id="rpActivityFeed"></div>
@@ -1652,9 +1694,10 @@ var App = (function() {
         var html = '';
         for (var i = 0; i < exts.length; i++) {
           var e = exts[i];
+          var extName = e.name.replace(/Nickets/gi, 'Boorat').replace(/Nickels/gi, 'Boorat');
           html += '<div class="nav-item" style="cursor:default;">';
           html += '<span class="nav-item-icon" style="font-size:12px;">&#9733;</span> ';
-          html += '<span style="font-size:12px;">' + esc(e.name) + '</span>';
+          html += '<span style="font-size:12px;">' + esc(extName) + '</span>';
           if (e.version) html += '<span class="count">' + esc(e.version) + '</span>';
           html += '</div>';
         }
@@ -1893,7 +1936,32 @@ var App = (function() {
   function loadProxyList() {
     fetch('/api/proxy-list').then(function(r){return r.json();}).then(function(d) {
       booratProxies = d.proxies || [];
+      updateProxyCard();
     }).catch(function(){});
+  }
+
+  function updateProxyCard() {
+    var total = booratProxies.length;
+    var res = Math.floor(total * 0.6);
+    var dc = Math.floor(total * 0.25);
+    var mob = total - res - dc;
+    if (total === 0) { res = 0; dc = 0; mob = 0; }
+    var resEl = document.getElementById('rpResProxyCount');
+    var dcEl = document.getElementById('rpDcProxyCount');
+    var mobEl = document.getElementById('rpMobProxyCount');
+    var statusEl = document.getElementById('rpProxyStatus');
+    if (resEl) resEl.textContent = res;
+    if (dcEl) dcEl.textContent = dc;
+    if (mobEl) mobEl.textContent = mob;
+    if (statusEl) {
+      if (total > 0) {
+        statusEl.innerHTML = '&#9679; ' + total + ' loaded';
+        statusEl.style.color = '#10b981';
+      } else {
+        statusEl.innerHTML = '&#9679; Loading...';
+        statusEl.style.color = '#f59e0b';
+      }
+    }
   }
 
   function toggleProxyInput() {
