@@ -355,86 +355,120 @@ func ensureFPExtension() (string, error) {
     }
     if (!config) return;
 
-    // Utility: cloak function toString
-    var nativeToString = Function.prototype.toString;
-    function cloak(fn, original) {
-      var str = 'function ' + (original || fn.name || '') + '() { [native code] }';
-      fn.toString = function() { return str; };
+    // ── Advanced cloaking ──────────────────────────────────────────────
+    var _toString = Function.prototype.toString;
+    var _map = new WeakMap();
+    Function.prototype.toString = function() {
+      if (_map.has(this)) return _map.get(this);
+      return _toString.call(this);
+    };
+    _map.set(Function.prototype.toString, 'function toString() { [native code] }');
+
+    function cloak(fn, nativeName) {
+      _map.set(fn, 'function ' + (nativeName || '') + '() { [native code] }');
       return fn;
     }
 
-    // Canvas fingerprint noise
-    if (config.canvas && config.canvas.noise_seed) {
-      var seed = config.canvas.noise_seed;
-      function mulberry32(a) {
-        return function() {
-          a |= 0; a = a + 0x6D2B79F5 | 0;
-          var t = Math.imul(a ^ a >>> 15, 1 | a);
-          t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
-          return ((t ^ t >>> 14) >>> 0) / 4294967296;
-        };
+    // Make defineProperty overrides look native to getOwnPropertyDescriptor checks
+    var _origDefProp = Object.defineProperty;
+    var _origGetOwnPropDesc = Object.getOwnPropertyDescriptor;
+    var _hiddenDescs = new Map();
+
+    function stealthDefineProperty(obj, prop, descriptor) {
+      var origDesc = _origGetOwnPropDesc.call(Object, obj, prop);
+      _origDefProp.call(Object, obj, prop, descriptor);
+      if (origDesc) {
+        _hiddenDescs.set(obj + '::' + prop, origDesc);
       }
-      var rng = mulberry32(seed);
+    }
+
+    function stealthGetter(obj, prop, getter, nativeName) {
+      cloak(getter, nativeName || ('get ' + prop));
+      _origDefProp.call(Object, obj, prop, {
+        get: getter,
+        configurable: true,
+        enumerable: true
+      });
+    }
+
+    // ── PRNG ───────────────────────────────────────────────────────────
+    function mulberry32(a) {
+      return function() {
+        a |= 0; a = a + 0x6D2B79F5 | 0;
+        var t = Math.imul(a ^ a >>> 15, 1 | a);
+        t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+      };
+    }
+
+    // ── Canvas fingerprint noise ───────────────────────────────────────
+    if (config.canvas && config.canvas.noise_seed) {
+      var rng = mulberry32(config.canvas.noise_seed);
 
       var origToDataURL = HTMLCanvasElement.prototype.toDataURL;
       HTMLCanvasElement.prototype.toDataURL = cloak(function() {
-        var ctx = this.getContext('2d');
-        if (ctx) {
-          var imageData = ctx.getImageData(0, 0, this.width, this.height);
-          var d = imageData.data;
-          for (var i = 0; i < d.length; i += 4) {
-            d[i] = d[i] + Math.floor((rng() - 0.5) * 2);
+        try {
+          var ctx = this.getContext('2d');
+          if (ctx && this.width > 0 && this.height > 0) {
+            var imageData = ctx.getImageData(0, 0, this.width, this.height);
+            var d = imageData.data;
+            for (var i = 0; i < d.length; i += 4) {
+              d[i] = Math.max(0, Math.min(255, d[i] + Math.floor((rng() - 0.5) * 2)));
+            }
+            ctx.putImageData(imageData, 0, 0);
           }
-          ctx.putImageData(imageData, 0, 0);
-        }
+        } catch(e) {}
         return origToDataURL.apply(this, arguments);
       }, 'toDataURL');
 
       var origToBlob = HTMLCanvasElement.prototype.toBlob;
       HTMLCanvasElement.prototype.toBlob = cloak(function(cb, type, quality) {
-        var ctx = this.getContext('2d');
-        if (ctx) {
-          var imageData = ctx.getImageData(0, 0, this.width, this.height);
-          var d = imageData.data;
-          for (var i = 0; i < d.length; i += 4) {
-            d[i] = d[i] + Math.floor((rng() - 0.5) * 2);
+        try {
+          var ctx = this.getContext('2d');
+          if (ctx && this.width > 0 && this.height > 0) {
+            var imageData = ctx.getImageData(0, 0, this.width, this.height);
+            var d = imageData.data;
+            for (var i = 0; i < d.length; i += 4) {
+              d[i] = Math.max(0, Math.min(255, d[i] + Math.floor((rng() - 0.5) * 2)));
+            }
+            ctx.putImageData(imageData, 0, 0);
           }
-          ctx.putImageData(imageData, 0, 0);
-        }
+        } catch(e) {}
         return origToBlob.call(this, cb, type, quality);
       }, 'toBlob');
+
+      // Also patch getImageData to add noise for fingerprint reads
+      var origGetImageData = CanvasRenderingContext2D.prototype.getImageData;
+      CanvasRenderingContext2D.prototype.getImageData = cloak(function() {
+        var imageData = origGetImageData.apply(this, arguments);
+        var d = imageData.data;
+        for (var i = 0; i < d.length; i += 4) {
+          d[i] = Math.max(0, Math.min(255, d[i] + Math.floor((rng() - 0.5) * 2)));
+        }
+        return imageData;
+      }, 'getImageData');
     }
 
-    // WebGL spoofing
+    // ── WebGL spoofing ─────────────────────────────────────────────────
     if (config.webgl) {
-      var origGetParam = WebGLRenderingContext.prototype.getParameter;
-      WebGLRenderingContext.prototype.getParameter = cloak(function(param) {
-        var ext = this.getExtension('WEBGL_debug_renderer_info');
-        if (ext) {
-          if (param === ext.UNMASKED_VENDOR_WEBGL && config.webgl.vendor) return config.webgl.vendor;
-          if (param === ext.UNMASKED_RENDERER_WEBGL && config.webgl.renderer) return config.webgl.renderer;
-        }
-        return origGetParam.call(this, param);
-      }, 'getParameter');
-
-      if (typeof WebGL2RenderingContext !== 'undefined') {
-        var origGetParam2 = WebGL2RenderingContext.prototype.getParameter;
-        WebGL2RenderingContext.prototype.getParameter = cloak(function(param) {
+      var patchWebGL = function(proto) {
+        var origGetParam = proto.getParameter;
+        proto.getParameter = cloak(function(param) {
           var ext = this.getExtension('WEBGL_debug_renderer_info');
           if (ext) {
             if (param === ext.UNMASKED_VENDOR_WEBGL && config.webgl.vendor) return config.webgl.vendor;
             if (param === ext.UNMASKED_RENDERER_WEBGL && config.webgl.renderer) return config.webgl.renderer;
           }
-          return origGetParam2.call(this, param);
+          return origGetParam.call(this, param);
         }, 'getParameter');
-      }
+      };
+      patchWebGL(WebGLRenderingContext.prototype);
+      if (typeof WebGL2RenderingContext !== 'undefined') patchWebGL(WebGL2RenderingContext.prototype);
     }
 
-    // Audio context noise
+    // ── Audio context noise ────────────────────────────────────────────
     if (config.audio && config.audio.noise_seed) {
-      var audioSeed = config.audio.noise_seed;
-      var audioRng = mulberry32(audioSeed);
-      var origCreateAnalyser = AudioContext.prototype.createAnalyser || (typeof webkitAudioContext !== 'undefined' && webkitAudioContext.prototype.createAnalyser);
+      var audioRng = mulberry32(config.audio.noise_seed);
       if (AudioContext.prototype.createAnalyser) {
         var _origCA = AudioContext.prototype.createAnalyser;
         AudioContext.prototype.createAnalyser = cloak(function() {
@@ -442,64 +476,101 @@ func ensureFPExtension() (string, error) {
           var origGetFloat = analyser.getFloatFrequencyData.bind(analyser);
           analyser.getFloatFrequencyData = cloak(function(array) {
             origGetFloat(array);
-            for (var i = 0; i < array.length; i++) {
-              array[i] = array[i] + (audioRng() * 0.0001);
-            }
+            for (var i = 0; i < array.length; i++) array[i] += audioRng() * 0.0001;
           }, 'getFloatFrequencyData');
+          var origGetByte = analyser.getByteFrequencyData.bind(analyser);
+          analyser.getByteFrequencyData = cloak(function(array) {
+            origGetByte(array);
+            for (var i = 0; i < array.length; i++) array[i] = Math.max(0, Math.min(255, array[i] + Math.floor((audioRng() - 0.5) * 2)));
+          }, 'getByteFrequencyData');
           return analyser;
         }, 'createAnalyser');
       }
+      // Noise on OfflineAudioContext destination
+      if (typeof OfflineAudioContext !== 'undefined') {
+        var origStartRendering = OfflineAudioContext.prototype.startRendering;
+        OfflineAudioContext.prototype.startRendering = cloak(function() {
+          return origStartRendering.call(this).then(function(buffer) {
+            for (var ch = 0; ch < buffer.numberOfChannels; ch++) {
+              var d = buffer.getChannelData(ch);
+              for (var i = 0; i < d.length; i++) d[i] += audioRng() * 0.0001;
+            }
+            return buffer;
+          });
+        }, 'startRendering');
+      }
     }
 
-    // Navigator properties
+    // ── Navigator properties (stealth) ─────────────────────────────────
     if (config.navigator) {
-      var navProps = config.navigator;
-      if (navProps.hardware_concurrency !== undefined) {
-        Object.defineProperty(navigator, 'hardwareConcurrency', { get: cloak(function() { return navProps.hardware_concurrency; }, 'get hardwareConcurrency') });
-      }
-      if (navProps.device_memory !== undefined) {
-        Object.defineProperty(navigator, 'deviceMemory', { get: cloak(function() { return navProps.device_memory; }, 'get deviceMemory') });
-      }
-      if (navProps.platform !== undefined) {
-        Object.defineProperty(navigator, 'platform', { get: cloak(function() { return navProps.platform; }, 'get platform') });
-      }
-      if (navProps.language !== undefined) {
-        Object.defineProperty(navigator, 'language', { get: cloak(function() { return navProps.language; }, 'get language') });
-      }
-      if (navProps.languages !== undefined) {
-        Object.defineProperty(navigator, 'languages', { get: cloak(function() { return Object.freeze(navProps.languages.slice()); }, 'get languages') });
-      }
+      var np = config.navigator;
+      if (np.hardware_concurrency !== undefined) stealthGetter(navigator, 'hardwareConcurrency', function() { return np.hardware_concurrency; });
+      if (np.device_memory !== undefined) stealthGetter(navigator, 'deviceMemory', function() { return np.device_memory; });
+      if (np.platform !== undefined) stealthGetter(navigator, 'platform', function() { return np.platform; });
+      if (np.language !== undefined) stealthGetter(navigator, 'language', function() { return np.language; });
+      if (np.languages !== undefined) stealthGetter(navigator, 'languages', function() { return Object.freeze(np.languages.slice()); });
+      if (np.max_touch_points !== undefined) stealthGetter(navigator, 'maxTouchPoints', function() { return np.max_touch_points; });
+      if (np.user_agent !== undefined) stealthGetter(navigator, 'userAgent', function() { return np.user_agent; });
+      if (np.app_version !== undefined) stealthGetter(navigator, 'appVersion', function() { return np.app_version; });
+      if (np.vendor !== undefined) stealthGetter(navigator, 'vendor', function() { return np.vendor; });
     }
 
-    // Screen override
+    // ── Screen override (stealth) ──────────────────────────────────────
     if (config.screen) {
       var scr = config.screen;
       if (scr.width !== undefined) {
-        Object.defineProperty(screen, 'width', { get: cloak(function() { return scr.width; }, 'get width') });
-        Object.defineProperty(screen, 'availWidth', { get: cloak(function() { return scr.width; }, 'get availWidth') });
+        stealthGetter(screen, 'width', function() { return scr.width; });
+        stealthGetter(screen, 'availWidth', function() { return scr.width; });
       }
       if (scr.height !== undefined) {
-        Object.defineProperty(screen, 'height', { get: cloak(function() { return scr.height; }, 'get height') });
-        Object.defineProperty(screen, 'availHeight', { get: cloak(function() { return scr.height - 40; }, 'get availHeight') });
+        stealthGetter(screen, 'height', function() { return scr.height; });
+        stealthGetter(screen, 'availHeight', function() { return scr.height - 40; });
       }
       if (scr.color_depth !== undefined) {
-        Object.defineProperty(screen, 'colorDepth', { get: cloak(function() { return scr.color_depth; }, 'get colorDepth') });
-        Object.defineProperty(screen, 'pixelDepth', { get: cloak(function() { return scr.color_depth; }, 'get pixelDepth') });
+        stealthGetter(screen, 'colorDepth', function() { return scr.color_depth; });
+        stealthGetter(screen, 'pixelDepth', function() { return scr.color_depth; });
       }
     }
 
-    // Timezone override
+    // ── Timezone override (full) ───────────────────────────────────────
     if (config.timezone && config.timezone.name) {
       var tz = config.timezone;
-      var OrigDate = Date;
+      // Timezone offset map (name -> offset in minutes, negative = ahead of UTC)
+      var tzOffsets = {
+        'America/New_York': 300, 'America/Chicago': 360, 'America/Denver': 420,
+        'America/Los_Angeles': 480, 'America/Anchorage': 540, 'Pacific/Honolulu': 600,
+        'America/Phoenix': 420, 'America/Toronto': 300, 'America/Vancouver': 480,
+        'America/Sao_Paulo': 180, 'America/Argentina/Buenos_Aires': 180, 'America/Mexico_City': 360,
+        'Europe/London': 0, 'Europe/Paris': -60, 'Europe/Berlin': -60, 'Europe/Madrid': -60,
+        'Europe/Rome': -60, 'Europe/Amsterdam': -60, 'Europe/Brussels': -60,
+        'Europe/Moscow': -180, 'Europe/Istanbul': -180, 'Europe/Athens': -120,
+        'Europe/Bucharest': -120, 'Europe/Warsaw': -60, 'Europe/Zurich': -60,
+        'Asia/Tokyo': -540, 'Asia/Shanghai': -480, 'Asia/Hong_Kong': -480,
+        'Asia/Singapore': -480, 'Asia/Seoul': -540, 'Asia/Kolkata': -330,
+        'Asia/Dubai': -240, 'Asia/Bangkok': -420, 'Asia/Jakarta': -420,
+        'Asia/Taipei': -480, 'Asia/Manila': -480,
+        'Australia/Sydney': -660, 'Australia/Melbourne': -660, 'Australia/Perth': -480,
+        'Pacific/Auckland': -780, 'Africa/Cairo': -120, 'Africa/Lagos': -60,
+        'Africa/Johannesburg': -120, 'UTC': 0, 'GMT': 0,
+      };
+      var targetOffset = tzOffsets[tz.name];
+      if (targetOffset === undefined) targetOffset = 0;
+
+      // Override Date.prototype.getTimezoneOffset
+      var origGTZO = Date.prototype.getTimezoneOffset;
+      Date.prototype.getTimezoneOffset = cloak(function() { return targetOffset; }, 'getTimezoneOffset');
+
+      // Override Intl.DateTimeFormat
       var origDTF = Intl.DateTimeFormat;
-      Intl.DateTimeFormat = cloak(function(loc, opts) {
-        opts = opts || {};
+      var newDTF = cloak(function(loc, opts) {
+        opts = Object.assign({}, opts || {});
         if (!opts.timeZone) opts.timeZone = tz.name;
         return new origDTF(loc, opts);
       }, 'DateTimeFormat');
-      Intl.DateTimeFormat.prototype = origDTF.prototype;
-      Intl.DateTimeFormat.supportedLocalesOf = origDTF.supportedLocalesOf;
+      newDTF.prototype = origDTF.prototype;
+      newDTF.supportedLocalesOf = origDTF.supportedLocalesOf;
+      cloak(newDTF.supportedLocalesOf, 'supportedLocalesOf');
+      Intl.DateTimeFormat = newDTF;
 
       var origResolvedOptions = origDTF.prototype.resolvedOptions;
       origDTF.prototype.resolvedOptions = cloak(function() {
@@ -507,9 +578,24 @@ func ensureFPExtension() (string, error) {
         r.timeZone = tz.name;
         return r;
       }, 'resolvedOptions');
+
+      // Override Date.prototype.toString and toTimeString to reflect correct timezone
+      var origDateToString = Date.prototype.toString;
+      Date.prototype.toString = cloak(function() {
+        try {
+          var fmt = new origDTF('en-US', { timeZone: tz.name, weekday:'short', year:'numeric', month:'short', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false, timeZoneName:'long' });
+          var parts = fmt.formatToParts(this);
+          var get = function(t) { for (var i=0;i<parts.length;i++) if(parts[i].type===t) return parts[i].value; return ''; };
+          var sign = targetOffset <= 0 ? '+' : '-';
+          var absOff = Math.abs(targetOffset);
+          var offH = String(Math.floor(absOff/60)).padStart(2,'0');
+          var offM = String(absOff%60).padStart(2,'0');
+          return get('weekday') + ' ' + get('month') + ' ' + get('day') + ' ' + get('year') + ' ' + get('hour') + ':' + get('minute') + ':' + get('second') + ' GMT' + sign + offH + offM + ' (' + get('timeZoneName') + ')';
+        } catch(e) { return origDateToString.call(this); }
+      }, 'toString');
     }
 
-    // WebRTC IP leak protection
+    // ── WebRTC IP leak protection ──────────────────────────────────────
     if (config.webrtc !== false) {
       var origRTCPC = window.RTCPeerConnection || window.webkitRTCPeerConnection;
       if (origRTCPC) {
@@ -532,31 +618,48 @@ func ensureFPExtension() (string, error) {
       }
     }
 
-    // Plugin/mimeType masking — report a standard set
+    // ── Plugin masking ─────────────────────────────────────────────────
     try {
-      Object.defineProperty(navigator, 'plugins', {
-        get: cloak(function() {
-          return { length: 5,
-            0: { name: 'Chrome PDF Plugin', filename: 'internal-pdf-viewer' },
-            1: { name: 'Chrome PDF Viewer', filename: 'mhjfbmdgcfjbbpaeojofohoefgiehjai' },
-            2: { name: 'Native Client', filename: 'internal-nacl-plugin' },
-            3: { name: 'Chromium PDF Plugin', filename: 'internal-pdf-viewer' },
-            4: { name: 'Chromium PDF Viewer', filename: 'internal-pdf-viewer' },
-            item: function(i) { return this[i] || null; },
-            namedItem: function(n) { for (var i=0;i<this.length;i++) if(this[i].name===n) return this[i]; return null; },
-            refresh: function() {}
-          };
-        }, 'get plugins')
-      });
+      stealthGetter(navigator, 'plugins', function() {
+        return { length: 5,
+          0: { name: 'Chrome PDF Plugin', filename: 'internal-pdf-viewer', description: 'Portable Document Format' },
+          1: { name: 'Chrome PDF Viewer', filename: 'mhjfbmdgcfjbbpaeojofohoefgiehjai', description: '' },
+          2: { name: 'Native Client', filename: 'internal-nacl-plugin', description: '' },
+          3: { name: 'Chromium PDF Plugin', filename: 'internal-pdf-viewer', description: 'Portable Document Format' },
+          4: { name: 'Chromium PDF Viewer', filename: 'internal-pdf-viewer', description: '' },
+          item: function(i) { return this[i] || null; },
+          namedItem: function(n) { for (var i=0;i<this.length;i++) if(this[i].name===n) return this[i]; return null; },
+          refresh: function() {}
+        };
+      }, 'get plugins');
     } catch(e) {}
 
-    // Hide automation flags
+    // ── Hide automation flags ──────────────────────────────────────────
     try {
-      Object.defineProperty(navigator, 'webdriver', { get: cloak(function() { return false; }, 'get webdriver') });
+      stealthGetter(navigator, 'webdriver', function() { return false; }, 'get webdriver');
     } catch(e) {}
-    delete navigator.__proto__.webdriver;
+    try { delete navigator.__proto__.webdriver; } catch(e) {}
 
-    console.log('[FP Guard] Fingerprint spoofing active');
+    // Hide chrome.runtime from non-extension pages (detection vector)
+    try {
+      if (window.chrome && window.chrome.runtime && !window.chrome.runtime.id) {
+        delete window.chrome.runtime;
+        window.chrome.runtime = undefined;
+      }
+    } catch(e) {}
+
+    // ── Permissions API spoof ──────────────────────────────────────────
+    try {
+      var origQuery = navigator.permissions.query;
+      navigator.permissions.query = cloak(function(desc) {
+        if (desc && desc.name === 'notifications') {
+          return Promise.resolve({ state: Notification.permission });
+        }
+        return origQuery.call(this, desc);
+      }, 'query');
+    } catch(e) {}
+
+    console.log('[FP Guard] v2 active');
   } catch(err) {
     console.error('[FP Guard] Init error:', err);
   }
