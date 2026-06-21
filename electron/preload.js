@@ -5,5 +5,6 @@ contextBridge.exposeInMainWorld('personax', {
     ipcRenderer.invoke('launch-chrome', chromePath, args, profileId),
   stopChrome: (pid) =>
     ipcRenderer.invoke('stop-chrome', pid),
-  isElectron: true
+  isElectron: true,
+  focusWindow: () => ipcRenderer.invoke('focus-window')
 })

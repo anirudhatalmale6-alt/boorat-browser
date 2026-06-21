@@ -1285,18 +1285,23 @@ var App = (function() {
     // Show license modal and force focus
     var modal = document.getElementById('licenseModal');
     modal.classList.add('show');
-    // Force window and input focus after a delay
+    // Force Electron window focus via IPC then focus input
     setTimeout(function() {
-      window.focus();
-      document.body.click();
-      var activeTab = document.getElementById('memberTab').style.display !== 'none' ? 'memberUsername' : 'licenseKeyInput';
-      var input = document.getElementById(activeTab);
-      if (input) {
-        input.setAttribute('tabindex', '1');
-        input.focus();
-        input.click();
+      if (window.personax && window.personax.focusWindow) {
+        window.personax.focusWindow().then(function() {
+          setTimeout(function() {
+            var activeTab = document.getElementById('memberTab').style.display !== 'none' ? 'memberUsername' : 'licenseKeyInput';
+            var input = document.getElementById(activeTab);
+            if (input) { input.focus(); input.click(); }
+          }, 100);
+        });
+      } else {
+        window.focus();
+        var activeTab = document.getElementById('memberTab').style.display !== 'none' ? 'memberUsername' : 'licenseKeyInput';
+        var input = document.getElementById(activeTab);
+        if (input) { input.focus(); input.click(); }
       }
-    }, 300);
+    }, 200);
     toast('Logged out', 'success');
   }
 
@@ -2797,7 +2802,8 @@ var License = (function() {
     var errEl = document.getElementById('memberError');
     if (!username || !password) { errEl.textContent = 'Enter username and password'; return; }
     errEl.textContent = 'Logging in...';
-    fetch('/api/member/login', {
+    var srvUrl = document.getElementById('serverUrl').value.trim();
+    fetch(srvUrl + '/api/member/login', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({username: username, password: password})

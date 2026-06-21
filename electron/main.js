@@ -227,6 +227,14 @@ function setupIPC() {
     }
   })
 
+  ipcMain.handle('focus-window', async () => {
+    if (mainWindow) {
+      mainWindow.focus()
+      mainWindow.webContents.focus()
+    }
+    return { ok: true }
+  })
+
   ipcMain.handle('stop-chrome', async (event, pid) => {
     try {
       execFile('taskkill', ['/F', '/T', '/PID', String(pid)], { windowsHide: true }, () => {})
