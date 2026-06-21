@@ -1284,6 +1284,7 @@ var App = (function() {
       }
     } catch(e) {}
     // Full page reload - cleanest way to reset all state
+    isLogoutReload = true;
     window.location.reload();
   }
 
@@ -2290,7 +2291,9 @@ var App = (function() {
   loadProxyList();
 
   // Graceful shutdown when window closes
+  var isLogoutReload = false;
   window.addEventListener('beforeunload', function() {
+    if (isLogoutReload) return; // Don't kill server on logout reload
     navigator.sendBeacon('/api/quit', '{}');
   });
 
