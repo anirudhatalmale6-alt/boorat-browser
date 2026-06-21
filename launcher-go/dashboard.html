@@ -989,7 +989,40 @@
       <!-- Fingerprint Tab -->
       <div id="panelFingerprint" style="display:none;">
         <div id="fpSummaryContainer">
-          <p style="color:#8b949e;font-size:13px;text-align:center;padding:40px 0;">Create a profile first to see fingerprint details</p>
+          <div style="padding:4px 0;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+              <span style="font-size:13px;font-weight:600;color:#c9d1d9;">Browser Fingerprint</span>
+              <span style="font-size:10px;color:#3fb950;background:rgba(63,185,80,0.1);padding:2px 8px;border-radius:4px;">Auto-generated</span>
+            </div>
+            <div style="background:#0d1117;border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:12px;">
+              <div style="font-size:10px;color:#8b949e;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;font-weight:600;">System</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px;">
+                <div style="font-size:11px;color:#8b949e;">Platform: <span style="color:#c9d1d9;" id="fpPlatformDisplay">Auto</span></div>
+                <div style="font-size:11px;color:#8b949e;">Cores: <span style="color:#c9d1d9;" id="fpCoresDisplay">Random</span></div>
+                <div style="font-size:11px;color:#8b949e;">Memory: <span style="color:#c9d1d9;" id="fpMemoryDisplay">Random</span></div>
+                <div style="font-size:11px;color:#8b949e;">Screen: <span style="color:#c9d1d9;" id="fpScreenDisplay">Random</span></div>
+              </div>
+              <div style="font-size:10px;color:#8b949e;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;font-weight:600;">Browser</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px;">
+                <div style="font-size:11px;color:#8b949e;">Language: <span style="color:#c9d1d9;" id="fpLangDisplay">Random</span></div>
+                <div style="font-size:11px;color:#8b949e;">Timezone: <span style="color:#c9d1d9;" id="fpTzDisplay">Auto</span></div>
+                <div style="font-size:11px;color:#8b949e;grid-column:1/-1;">User Agent: <span style="color:#c9d1d9;font-size:10px;" id="fpUaDisplay">Auto-generated</span></div>
+              </div>
+              <div style="font-size:10px;color:#8b949e;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;font-weight:600;">Canvas & WebGL</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px;">
+                <div style="font-size:11px;color:#8b949e;">WebGL: <span style="color:#c9d1d9;" id="fpWebglDisplay">Randomized</span></div>
+                <div style="font-size:11px;color:#8b949e;">Canvas: <span style="color:#c9d1d9;" id="fpCanvasDisplay">Noise added</span></div>
+                <div style="font-size:11px;color:#8b949e;">Audio: <span style="color:#c9d1d9;" id="fpAudioDisplay">Noise added</span></div>
+                <div style="font-size:11px;color:#8b949e;">Fonts: <span style="color:#c9d1d9;" id="fpFontsDisplay">System</span></div>
+              </div>
+              <div style="font-size:10px;color:#8b949e;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;font-weight:600;">Privacy</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+                <div style="font-size:11px;color:#8b949e;">WebRTC: <span style="color:#c9d1d9;" id="fpRtcDisplay">Protected</span></div>
+                <div style="font-size:11px;color:#8b949e;">DNT: <span style="color:#c9d1d9;" id="fpDntDisplay">Disabled</span></div>
+              </div>
+            </div>
+            <p style="font-size:10px;color:#484f58;margin-top:8px;text-align:center;">Fingerprint is automatically generated with unique values for each profile</p>
+          </div>
         </div>
       </div>
 
@@ -1759,7 +1792,6 @@ var App = (function() {
     document.getElementById('fpSummaryContainer').innerHTML = '';
     populateFolderSelect(state.activeFolder);
     switchProfileTab('general');
-    document.getElementById('tabFingerprint').style.display = 'none';
     openModal('profileModal');
   }
 
@@ -1825,9 +1857,24 @@ function switchProfileTab(tab) {
   }
 
   function showFpSummaryInline(fp) {
-    var c = document.getElementById('fpSummaryContainer');
-    if (!fp || !fp.navigator) { c.innerHTML = ''; return; }
-    c.innerHTML = buildFpSummaryHTML(fp);
+    if (!fp || !fp.navigator) return;
+    var nav = fp.navigator || {};
+    var webgl = fp.webgl || {};
+    var canvas = fp.canvas || {};
+    var audio = fp.audio || {};
+    var scr = fp.screen || {};
+    var tz = fp.timezone || {};
+    var el;
+    el = document.getElementById('fpPlatformDisplay'); if(el) el.textContent = nav.platform || 'Auto';
+    el = document.getElementById('fpCoresDisplay'); if(el) el.textContent = nav.hardware_concurrency || 'Random';
+    el = document.getElementById('fpMemoryDisplay'); if(el) el.textContent = (nav.device_memory || 'Random') + (nav.device_memory ? ' GB' : '');
+    el = document.getElementById('fpScreenDisplay'); if(el) el.textContent = (scr.width || '?') + 'x' + (scr.height || '?');
+    el = document.getElementById('fpLangDisplay'); if(el) el.textContent = nav.language || 'Random';
+    el = document.getElementById('fpTzDisplay'); if(el) el.textContent = tz.id || tz.name || 'Auto';
+    el = document.getElementById('fpUaDisplay'); if(el) el.textContent = (nav.user_agent || nav.userAgent || 'Auto-generated').substring(0, 80);
+    el = document.getElementById('fpWebglDisplay'); if(el) el.textContent = webgl.renderer || 'Randomized';
+    el = document.getElementById('fpCanvasDisplay'); if(el) el.textContent = canvas.noise_seed ? 'Seed: ' + canvas.noise_seed : 'Noise added';
+    el = document.getElementById('fpAudioDisplay'); if(el) el.textContent = audio.noise_seed ? 'Seed: ' + audio.noise_seed : 'Noise added';
   }
 
   function buildFpSummaryHTML(fp) {
