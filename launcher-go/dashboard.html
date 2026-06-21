@@ -924,7 +924,7 @@
           <option value="personax">PersonaX Proxy (Random from list)</option>
           <option value="custom">Custom Proxy</option>
         </select>
-        <input type="text" id="profileProxy" placeholder="host:port:username:password" style="display:none;">
+        <input type="password" id="profileProxy" placeholder="host:port:username:password" style="display:none;">
         <div class="form-hint" id="proxyHint">No proxy will be used</div>
       </div>
 
@@ -1189,12 +1189,12 @@ var App = (function() {
       var f = state.folders[i];
       var fid = f.id || f.ID;
       var active = state.activeFolder !== null && String(state.activeFolder) === String(fid);
-      html += '<div class="nav-item' + (active ? ' active' : '') + '" onclick="App.selectFolder(' + fid + ')">';
+      html += '<div class="nav-item' + (active ? ' active' : '') + '" onclick="App.selectFolder(\'' + fid + '\')">';
       html += '<span class="nav-item-icon">&#128194;</span> ' + esc(f.name);
       html += '<span class="count">' + (f.profile_count || 0) + '</span>';
       html += '<span class="folder-actions">';
-      html += '<button onclick="event.stopPropagation();App.renameFolder(' + fid + ',\'' + esc(f.name).replace(/'/g, "\\'") + '\')" title="Rename">&#9998;</button>';
-      html += '<button onclick="event.stopPropagation();App.deleteFolder(' + fid + ',\'' + esc(f.name).replace(/'/g, "\\'") + '\')" title="Delete">&times;</button>';
+      html += '<button onclick="event.stopPropagation();App.renameFolder(\'' + fid + '\',\'' + esc(f.name).replace(/'/g, "\\'") + '\')" title="Rename">&#9998;</button>';
+      html += '<button onclick="event.stopPropagation();App.deleteFolder(\'' + fid + '\',\'' + esc(f.name).replace(/'/g, "\\'") + '\')" title="Delete">&times;</button>';
       html += '</span></div>';
     }
     document.getElementById('folderList').innerHTML = html;
@@ -1207,6 +1207,7 @@ var App = (function() {
   function selectFolder(folderId) {
     state.currentPanel = 'profiles';
     state.activeFolder = folderId;
+    console.log('Selected folder:', folderId);
     renderSidebar();
     renderProfiles();
     var title = 'All Profiles';
@@ -2023,7 +2024,7 @@ var App = (function() {
   }
 
   // ─── Team Management ────────────────────────────────────────────────
-  var TEAM_BASE = 'https://personax.work/api';
+  var TEAM_BASE = '';
   var TEAM_TOKEN = 'ching_admin_2026!';
   var teamMembers = [];
   var teamGroups = [];
@@ -2031,8 +2032,12 @@ var App = (function() {
   function teamFetch(path, opts) {
     opts = opts || {};
     opts.headers = opts.headers || {};
-    opts.headers['X-Admin-Token'] = TEAM_TOKEN;
-    return fetch(TEAM_BASE + path, opts).then(function(r){return r.json()});
+    opts.headers['Content-Type'] = opts.headers['Content-Type'] || 'application/json';
+    var url = '/api' + path;
+    return fetch(url, opts).then(function(r){
+      if(!r.ok) { console.error('Team API error:', r.status, url); return {}; }
+      return r.json();
+    }).catch(function(e){ console.error('Team API failed:', e, url); return {}; });
   }
   var allPerms = {
     profiles: ['open','create','delete','edit','move','export','import','edit_proxy','edit_fingerprint','edit_notes','edit_gmail','edit_custom_number'],
@@ -2063,15 +2068,15 @@ var App = (function() {
       '<button class="btn btn-primary btn-sm" onclick="App.sendAppChat()">Send</button></div></div></div>';
     appChatSession = chatSessionId;
     // Send initial system message if first time
-    fetch('https://personax.work/api/chat/messages?session_id=' + chatSessionId)
+    fetch('/api/chat/messages?session_id=' + chatSessionId)
     .then(function(r){return r.json()}).then(function(msgs){
       if (!Array.isArray(msgs) || msgs.length === 0) {
         var key = '';
         try { key = document.getElementById('licenseKeyInput') ? document.getElementById('licenseKeyInput').value : ''; } catch(e){}
-        fetch('https://personax.work/api/chat/send', {method:'POST', headers:{'Content-Type':'application/json'},
+        fetch('/api/chat/send', {method:'POST', headers:{'Content-Type':'application/json'},
           body:JSON.stringify({session_id:chatSessionId, sender:'system', message:'[APP CHAT] User from PersonaX app (key: ' + (key||'unknown') + ')', name:'App User'})})
         .then(function(){
-          return fetch('https://personax.work/api/chat/send', {method:'POST', headers:{'Content-Type':'application/json'},
+          return fetch('/api/chat/send', {method:'POST', headers:{'Content-Type':'application/json'},
             body:JSON.stringify({session_id:chatSessionId, sender:'admin', message:'Hi! Welcome to PersonaX support. How can I help you?', name:'Support'})});
         }).then(function(){ pollAppChat(); });
       } else { pollAppChat(); }
@@ -2092,13 +2097,13 @@ var App = (function() {
     div.textContent = msg;
     var el = document.getElementById('appChatMsgs');
     if (el) { el.appendChild(div); el.scrollTop = el.scrollHeight; }
-    fetch('https://personax.work/api/chat/send', {method:'POST', headers:{'Content-Type':'application/json'},
+    fetch('/api/chat/send', {method:'POST', headers:{'Content-Type':'application/json'},
       body:JSON.stringify({session_id:appChatSession, sender:'visitor', message:msg, name:'App User'})});
   }
 
   function pollAppChat() {
     if (!appChatSession || state.currentPanel !== 'chat') return;
-    fetch('https://personax.work/api/chat/messages?session_id=' + appChatSession)
+    fetch('/api/chat/messages?session_id=' + appChatSession)
     .then(function(r){return r.json()}).then(function(msgs){
       if (!Array.isArray(msgs)) return;
       if (msgs.length === appChatLastCount) { setTimeout(pollAppChat, 3000); return; }
