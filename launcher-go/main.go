@@ -1181,13 +1181,13 @@ func updateDistribteConfig(extensionPaths []string) {
 					os.WriteFile(configPath, []byte(jsContent), 0644)
 					log.Printf("Updated Distribte config in %s", extPath)
 
-					if !strings.Contains(manifest, "personax.xyz") {
+					if !strings.Contains(manifest, "personax.work") {
 						manifest = strings.Replace(manifest,
 							`"https://*.multiloginapp.com/*"`,
-							`"https://*.multiloginapp.com/*",`+"\n"+`            "https://personax.xyz/*"`,
+							`"https://*.multiloginapp.com/*",`+"\n"+`            "https://personax.work/*"`,
 							1)
 						os.WriteFile(manifestPath, []byte(manifest), 0644)
-						log.Printf("Patched Distribte manifest to include personax.xyz")
+						log.Printf("Patched Distribte manifest to include personax.work")
 					}
 				}
 			}
@@ -1333,7 +1333,7 @@ func prepareLaunch(profileID string) (*PrepareLaunchResult, error) {
 
 	startupURL := profile.StartupURL
 	if startupURL == "" {
-		startupURL = "https://personax.xyz/" + profile.ID
+		startupURL = "https://personax.work"
 	}
 
 	args = append(args, startupURL)
