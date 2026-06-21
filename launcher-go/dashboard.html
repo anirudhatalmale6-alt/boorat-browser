@@ -992,7 +992,7 @@
           <div style="padding:4px 0;">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
               <span style="font-size:13px;font-weight:600;color:#c9d1d9;">Browser Fingerprint</span>
-              <button onclick="document.getElementById('regenFp').checked=true;App.switchProfileTab('fingerprint');toast('Fingerprint will regenerate on save','success')" style="background:#f59e0b;color:#000;border:none;padding:4px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;">&#8635; New Fingerprint</button>
+              <button id="newFpBtn" onclick="window._regenFp=true;this.textContent='Will regenerate on save';this.style.background='#3fb950';toast('Fingerprint will be regenerated when you save','success')" style="background:#f59e0b;color:#000;border:none;padding:4px 12px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;">&#8635; New Fingerprint</button>
             </div>
             <div id="fpDetailGrid" style="border:1px solid rgba(255,255,255,0.06);border-radius:8px;overflow:hidden;"></div>
           </div>
@@ -1810,6 +1810,9 @@ function switchProfileTab(tab) {
 
     document.getElementById('regenFpGroup').style.display = '';
     document.getElementById('regenFp').checked = false;
+    window._regenFp = false;
+    var fpBtn2 = document.getElementById('newFpBtn');
+    if (fpBtn2) { fpBtn2.textContent = '\u21BB New Fingerprint'; fpBtn2.style.background = '#f59e0b'; }
     document.getElementById('tabFingerprint').style.display = '';
     populateFolderSelect(p.folder_id);
     showFpSummaryInline(fp);
@@ -1969,8 +1972,10 @@ function switchProfileTab(tab) {
       // Auto-regenerate fingerprint when platform/OS changes
       var origProfile = state.profiles.find(function(x) { return x.id === id; });
       var origPlatform = (origProfile && origProfile.fingerprint && origProfile.fingerprint.navigator) ? origProfile.fingerprint.navigator.platform : 'Win32';
-      if (document.getElementById('regenFp').checked || body.platform !== origPlatform) {
+      var regenCheck = document.getElementById('regenFp');
+      if ((regenCheck && regenCheck.checked) || window._regenFp || body.platform !== origPlatform) {
         body.regenerate_fingerprint = true;
+        window._regenFp = false;
       }
       api('PUT', '/api/profiles/' + id, body)
         .then(function() {
@@ -1982,6 +1987,7 @@ function switchProfileTab(tab) {
     } else {
       // Check license profile limit before creating
       if (typeof License !== 'undefined' && !License.canCreateProfile()) return;
+      body.regenerate_fingerprint = true;
       api('POST', '/api/profiles', body)
         .then(function() {
           toast('Profile created', 'success');
@@ -2981,6 +2987,7 @@ function switchProfileTab(tab) {
         proxy: proxy,
         platform: platform === 'Random' ? ['Win32','MacIntel','Linux x86_64'][Math.floor(Math.random()*3)] : (platform === 'macOS' ? 'MacIntel' : (platform === 'Linux' ? 'Linux x86_64' : 'Win32'))
       };
+      body.regenerate_fingerprint = true;
       api('POST', '/api/profiles', body)
       .then(function() { created++; createNext(i + 1); })
       .catch(function() { failed++; createNext(i + 1); });
