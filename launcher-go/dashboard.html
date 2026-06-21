@@ -56,9 +56,9 @@
   .logo { display: flex; align-items: center; gap: 11px; margin-bottom: 4px; }
   .logo-icon {
     width: 38px; height: 38px;
-    background: linear-gradient(135deg, #7c3aed 0%, #3b82f6 50%, #14b8a6 100%);
+    background: linear-gradient(135deg, #c0c0c0 0%, #f59e0b 50%, #ef4444 100%);
     border-radius: 50%; display: flex; align-items: center; justify-content: center;
-    font-size: 16px; color: #fff; font-weight: 700;
+    font-size: 14px; color: #fff; font-weight: 800;
     box-shadow: 0 4px 12px rgba(124, 58, 237, 0.35), inset 0 1px 0 rgba(255,255,255,0.15);
   }
   .logo span { font-size: 16px; font-weight: 700; color: #ffffff; letter-spacing: 0.02em; }
@@ -218,16 +218,16 @@
   .welcome-sphere-wrap { position: relative; width: 200px; height: 200px; margin-bottom: 32px; }
   .welcome-sphere {
     width: 200px; height: 200px; border-radius: 50%;
-    background: radial-gradient(circle at 35% 35%, #a78bfa 0%, #7c3aed 30%, #4c1d95 60%, #1e1b4b 100%);
-    box-shadow: 0 0 60px rgba(124, 58, 237, 0.4), 0 0 120px rgba(124, 58, 237, 0.15), inset 0 -20px 40px rgba(0,0,0,0.3), inset 0 10px 20px rgba(167, 139, 250, 0.3);
+    background: radial-gradient(circle at 35% 35%, #fbbf24 0%, #f59e0b 30%, #b45309 60%, #1a1a2e 100%);
+    box-shadow: 0 0 60px rgba(245, 158, 11, 0.4), 0 0 120px rgba(245, 158, 11, 0.15), inset 0 -20px 40px rgba(0,0,0,0.3), inset 0 10px 20px rgba(251, 191, 36, 0.3);
     display: flex; align-items: center; justify-content: center;
-    font-size: 72px; font-weight: 700; color: rgba(255,255,255,0.9);
+    font-size: 52px; font-weight: 800; color: rgba(255,255,255,0.95);
     animation: spherePulse 4s ease-in-out infinite;
     position: relative; z-index: 2;
   }
   .welcome-sphere::before {
     content: ''; position: absolute; inset: -4px; border-radius: 50%;
-    border: 2px solid rgba(167, 139, 250, 0.2);
+    border: 2px solid rgba(245, 158, 11, 0.2);
     animation: sphereRing 8s linear infinite;
   }
   .welcome-sphere::after {
@@ -319,9 +319,9 @@
   .rp-workspace { display: flex; align-items: center; gap: 12px; }
   .rp-workspace-icon {
     width: 48px; height: 48px; border-radius: 50%;
-    background: linear-gradient(135deg, #7c3aed 0%, #3b82f6 100%);
+    background: linear-gradient(135deg, #c0c0c0 0%, #f59e0b 100%);
     display: flex; align-items: center; justify-content: center;
-    font-size: 22px; font-weight: 700; color: #fff; flex-shrink: 0;
+    font-size: 18px; font-weight: 800; color: #fff; flex-shrink: 0;
   }
   .rp-workspace-info { flex: 1; }
   .rp-workspace-title { font-size: 14px; font-weight: 700; color: #ffffff; }
@@ -481,10 +481,10 @@
   }
   .license-logo {
     width: 72px; height: 72px; border-radius: 50%; margin: 0 auto 20px;
-    background: linear-gradient(135deg, #7c3aed 0%, #3b82f6 50%, #14b8a6 100%);
+    background: linear-gradient(135deg, #c0c0c0 0%, #f59e0b 50%, #ef4444 100%);
     display: flex; align-items: center; justify-content: center;
-    font-size: 28px; font-weight: 700; color: #fff;
-    box-shadow: 0 8px 32px rgba(124, 58, 237, 0.35), inset 0 1px 0 rgba(255,255,255,0.15);
+    font-size: 24px; font-weight: 800; color: #fff;
+    box-shadow: 0 8px 32px rgba(245, 158, 11, 0.35), inset 0 1px 0 rgba(255,255,255,0.15);
   }
   .license-title {
     font-size: 22px; font-weight: 700; color: #ffffff; margin-bottom: 8px;
@@ -657,7 +657,7 @@
 
 <!-- Splash Screen -->
 <div id="splashScreen">
-  <div class="splash-logo-img" style="display:flex;align-items:center;justify-content:center;font-size:48px;font-weight:700;color:#fff;background:linear-gradient(135deg, #7c3aed 0%, #3b82f6 50%, #14b8a6 100%);">B</div>
+  <div class="splash-logo-img" style="display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:800;color:#fff;background:linear-gradient(135deg, #c0c0c0 0%, #f59e0b 50%, #ef4444 100%);">PX</div>
   <div class="splash-title">PERSONAX</div>
   <div class="splash-loading">Loading...</div>
 </div>
@@ -667,10 +667,10 @@
   <aside class="sidebar">
     <div class="sidebar-header">
       <div class="logo">
-        <div class="logo-icon">B</div>
+        <div class="logo-icon">PX</div>
         <span>PERSONAX</span>
       </div>
-      <div class="logo-version">v1.0.0</div>
+      <div class="logo-version">v2.0.0</div>
       <input type="hidden" id="serverUrl" value="https://personax.work/personax-api">
     </div>
 
@@ -758,7 +758,7 @@
   <aside class="right-panel" id="rightPanel">
     <div class="rp-card">
       <div class="rp-workspace">
-        <div class="rp-workspace-icon">B</div>
+        <div class="rp-workspace-icon">PX</div>
         <div class="rp-workspace-info">
           <div class="rp-workspace-title">PERSONAX <span class="rp-license-badge" id="rpTierBadge" style="display:none;">-</span></div>
           <div class="rp-workspace-sub">Local Workspace</div>
@@ -1022,7 +1022,7 @@
 <!-- License Activation Modal -->
 <div class="license-modal-overlay" id="licenseModal">
   <div class="license-modal">
-    <div class="license-logo">B</div>
+    <div class="license-logo">PX</div>
     <div class="license-title">PERSONAX</div>
     <div class="license-subtitle">Enter your license key to get started</div>
     <div id="licenseExpiredBanner" class="license-expired-msg" style="display:none;">Your license has expired. Please enter a new license key to continue.</div>
@@ -1249,7 +1249,7 @@ var App = (function() {
     if (!state.connected) {
       el.innerHTML = '<div class="welcome-container">' +
         '<div class="welcome-sphere-wrap">' +
-          '<div class="welcome-sphere">B</div>' +
+          '<div class="welcome-sphere">PX</div>' +
           '<div class="sphere-orbit-dot"></div>' +
           '<div class="sphere-orbit-dot"></div>' +
           '<div class="sphere-orbit-dot"></div>' +
@@ -1272,7 +1272,7 @@ var App = (function() {
     if (list.length === 0) {
       el.innerHTML = '<div class="welcome-container">' +
         '<div class="welcome-sphere-wrap">' +
-          '<div class="welcome-sphere">B</div>' +
+          '<div class="welcome-sphere">PX</div>' +
           '<div class="sphere-orbit-dot"></div>' +
           '<div class="sphere-orbit-dot"></div>' +
           '<div class="sphere-orbit-dot"></div>' +
