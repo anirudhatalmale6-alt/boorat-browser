@@ -1165,19 +1165,25 @@ var App = (function() {
     var server = document.getElementById('serverUrl').value.trim();
     if (!server) return;
 
-    document.getElementById('dotServer').className = 'dot dot-yellow';
-    document.getElementById('serverStatus').textContent = 'Connecting...';
+    var dotSrv = document.getElementById('dotServer');
+    var srvStat = document.getElementById('serverStatus');
+    if (dotSrv) dotSrv.className = 'dot dot-yellow';
+    if (srvStat) srvStat.textContent = 'Connecting...';
 
     api('POST', '/api/connect', { server: server })
       .then(function() {
         state.connected = true;
-        document.getElementById('dotServer').className = 'dot dot-green';
-        document.getElementById('serverStatus').textContent = 'Connected';
+        var dotSrv2 = document.getElementById('dotServer');
+        var srvStat2 = document.getElementById('serverStatus');
+        if (dotSrv2) dotSrv2.className = 'dot dot-green';
+        if (srvStat2) srvStat2.textContent = 'Connected';
         return refresh();
       })
       .catch(function(err) {
-        document.getElementById('dotServer').className = 'dot dot-red';
-        document.getElementById('serverStatus').textContent = 'Offline - retrying...';
+        var dotSrv3 = document.getElementById('dotServer');
+        var srvStat3 = document.getElementById('serverStatus');
+        if (dotSrv3) dotSrv3.className = 'dot dot-red';
+        if (srvStat3) srvStat3.textContent = 'Offline - retrying...';
         setTimeout(function() { connect(); }, 5000);
       });
   }
@@ -2042,8 +2048,10 @@ var App = (function() {
 
       if (s.server_connected && !state.connected) {
         state.connected = true;
-        document.getElementById('dotServer').className = 'dot dot-green';
-        document.getElementById('serverStatus').textContent = 'Connected';
+        var dotSrv2 = document.getElementById('dotServer');
+        var srvStat2 = document.getElementById('serverStatus');
+        if (dotSrv2) dotSrv2.className = 'dot dot-green';
+        if (srvStat2) srvStat2.textContent = 'Connected';
       }
 
       if (s.last_crash_error) {
