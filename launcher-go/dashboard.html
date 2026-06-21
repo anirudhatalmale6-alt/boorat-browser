@@ -722,13 +722,7 @@
       </div>
     </div>
 
-    <div class="sidebar-footer">
-      <div class="status-line"><span class="dot dot-gray" id="dotServer"></span><span id="serverStatus">Not connected</span></div>
-      <div class="status-line"><span class="dot dot-gray" id="dotChromium"></span><span id="chromiumStatus">Chrome: checking</span></div>
-      <div id="chromiumProgress" style="display:none;">
-        <div class="progress-mini"><div class="progress-mini-fill" id="progressFill" style="width:0%"></div></div>
-      </div>
-      <button class="chromium-btn" id="chromiumBtn" onclick="App.downloadChromium()">Download Chrome</button>
+    <div class="sidebar-footer" style="padding:8px 16px;">
     </div>
   </aside>
 
@@ -2836,7 +2830,11 @@ var License = (function() {
     document.getElementById('tabMember').style.background = tab === 'member' ? 'rgba(59,130,246,0.15)' : 'rgba(255,255,255,0.03)';
     document.getElementById('tabMember').style.color = tab === 'member' ? '#3b82f6' : '#6b7280';
     if (tab === 'member') setTimeout(function(){ var el = document.getElementById('memberUsername'); if(el) { el.blur(); el.focus(); } }, 100);
-    if (tab === 'license') setTimeout(function(){ var el = document.getElementById('licenseKeyInput'); if(el) { el.blur(); el.focus(); } }, 100);
+    if (tab === 'license') {
+      window.memberInfo = null;
+      window.isMemberLogin = false;
+      setTimeout(function(){ var el = document.getElementById('licenseKeyInput'); if(el) { el.blur(); el.focus(); } }, 100);
+    }
   }
 
   function memberLogin() {
@@ -2884,6 +2882,10 @@ var License = (function() {
   }
 
 function activate() {
+    // If logging in with license key (not member), clear member restrictions
+    if (!window.isMemberLogin) {
+      window.memberInfo = null;
+    }
     var input = document.getElementById('licenseKeyInput');
     var btn = document.getElementById('licenseActivateBtn');
     var errorEl = document.getElementById('licenseError');
