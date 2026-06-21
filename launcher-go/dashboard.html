@@ -410,6 +410,7 @@
     background: #1a1a28; border: 1px solid rgba(255,255,255,0.06);
     border-radius: 10px; padding: 12px 14px; margin-top: 14px;
   }
+  .fp-summary { background: #0d1117; border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 12px; margin-top: 12px; }
   .fp-summary-title { font-size: 10px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
   .fp-row { display: flex; justify-content: space-between; font-size: 12px; font-weight: 500; padding: 3px 0; }
   .fp-row .fp-key { color: #6b7280; }
@@ -1800,16 +1801,34 @@ var App = (function() {
     var audio = fp.audio || {};
     var scr = fp.screen || {};
     var tz = fp.timezone || {};
-    var html = '<div class="fp-summary"><div class="fp-summary-title">Fingerprint</div>';
-    html += fpRow('Platform', nav.platform || '-');
-    html += fpRow('Cores', nav.hardware_concurrency || '-');
+    var fonts = fp.fonts || {};
+    var webrtc = fp.webrtc || {};
+
+    var html = '<div class="fp-summary">';
+    html += '<div class="fp-summary-title" style="display:flex;justify-content:space-between;align-items:center;">Fingerprint <span style="font-size:10px;color:#3fb950;font-weight:500;">Unique</span></div>';
+
+    html += '<div style="font-size:10px;color:#8b949e;text-transform:uppercase;letter-spacing:.06em;margin:10px 0 4px;font-weight:600;">System</div>';
+    html += fpRow('OS / Platform', nav.platform || '-');
+    html += fpRow('CPU Cores', nav.hardware_concurrency || '-');
     html += fpRow('Memory', (nav.device_memory || '-') + ' GB');
+    html += fpRow('Screen', (scr.width || '-') + 'x' + (scr.height || '-') + ' @ ' + (scr.color_depth || 24) + 'bit');
+
+    html += '<div style="font-size:10px;color:#8b949e;text-transform:uppercase;letter-spacing:.06em;margin:10px 0 4px;font-weight:600;">Browser</div>';
     html += fpRow('Language', nav.language || '-');
-    html += fpRow('WebGL', webgl.renderer || '-');
-    html += fpRow('Canvas Seed', canvas.noise_seed || '-');
-    html += fpRow('Audio Seed', audio.noise_seed || '-');
-    html += fpRow('Screen', (scr.width || '-') + 'x' + (scr.height || '-'));
+    html += fpRow('User Agent', '<span style="font-size:10px;word-break:break-all;">' + esc(nav.user_agent || nav.userAgent || 'Auto').substring(0, 60) + (nav.user_agent && nav.user_agent.length > 60 ? '...' : '') + '</span>');
     html += fpRow('Timezone', tz.id || tz.name || '-');
+
+    html += '<div style="font-size:10px;color:#8b949e;text-transform:uppercase;letter-spacing:.06em;margin:10px 0 4px;font-weight:600;">Canvas & WebGL</div>';
+    html += fpRow('WebGL Renderer', webgl.renderer || 'Randomized');
+    html += fpRow('WebGL Vendor', webgl.vendor || 'Auto');
+    html += fpRow('Canvas Noise', canvas.noise_seed ? 'Seed: ' + canvas.noise_seed : 'Randomized');
+    html += fpRow('Audio Noise', audio.noise_seed ? 'Seed: ' + audio.noise_seed : 'Randomized');
+
+    html += '<div style="font-size:10px;color:#8b949e;text-transform:uppercase;letter-spacing:.06em;margin:10px 0 4px;font-weight:600;">Privacy</div>';
+    html += fpRow('WebRTC', webrtc.mode || 'Protected');
+    html += fpRow('Fonts', fonts.count ? fonts.count + ' fonts' : 'System default');
+    html += fpRow('Do Not Track', nav.do_not_track ? 'Enabled' : 'Disabled');
+
     html += '</div>';
     return html;
   }
@@ -2815,8 +2834,11 @@ var App = (function() {
   function bulkCreate() {
     // Check license profile limit before bulk creating
     if (typeof License !== 'undefined' && !License.canCreateProfile()) return;
-    var ids = document.getElementById('bulkIds').value.trim();
-    if (!ids) { toast('Enter at least one profile ID', 'error'); return; }
+    var count = parseInt(document.getElementById('bulkCount').value) || 1;
+    var prefix = document.getElementById('bulkPrefix').value.trim() || 'Profile';
+    var ids = '';
+    for (var i = 1; i <= count; i++) { ids += prefix + ' ' + i + '\n'; }
+    if (!ids.trim()) { toast('Enter number of profiles', 'error'); return; }
     var btn = document.getElementById('bulkCreateBtn');
     btn.disabled = true;
     btn.textContent = 'Creating...';
@@ -4805,17 +4827,24 @@ function initRPAEditor() {
 
 <!-- Bulk Create Modal -->
 <div class="modal-overlay" id="bulkModal">
-  <div class="modal" style="width:560px;">
+  <div class="modal" style="width:520px;">
     <div class="modal-header">
-      <h3>Bulk Create Profiles</h3>
+      <h3>Create Multiple Profiles</h3>
       <button class="modal-close" onclick="App.closeModal('bulkModal')">&times;</button>
     </div>
     <div class="modal-body">
-      <div class="form-group">
-        <label>Profile IDs (one per line)</label>
-        <textarea id="bulkIds" rows="8" placeholder="BY17&#10;BJ89&#10;SL95&#10;..." style="width:100%;padding:10px 12px;background:#1a1a28;border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:#e2e8f0;font-family:monospace;font-size:13px;resize:vertical;"></textarea>
-        <div style="font-size:11px;color:#6b7280;margin-top:4px;">Each line = one profile. Startup URL will be personax.xyz/{ID}</div>
+      <div style="display:flex;gap:12px;">
+        <div class="form-group" style="flex:1">
+          <label>Number of Profiles</label>
+          <input type="number" id="bulkCount" min="1" max="100" value="5" style="width:100%;padding:10px 12px;background:#0d1117;border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#c9d1d9;font-size:14px;text-align:center;">
+        </div>
+        <div class="form-group" style="flex:1">
+          <label>Name Prefix</label>
+          <input type="text" id="bulkPrefix" value="Profile" placeholder="e.g. Profile, Account" style="width:100%;padding:10px 12px;background:#0d1117;border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#c9d1d9;font-size:13px;">
+        </div>
       </div>
+      <div style="font-size:11px;color:#8b949e;margin-top:-8px;margin-bottom:12px;">Profiles will be named: Profile 1, Profile 2, etc.</div>
+      <textarea id="bulkIds" style="display:none;"></textarea>
       <div class="form-group">
         <label>Proxy</label>
         <select id="bulkProxyMode" style="width:100%;padding:8px 12px;background:#1a1a28;border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:#e2e8f0;margin-bottom:6px;">
