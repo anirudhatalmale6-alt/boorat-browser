@@ -704,14 +704,12 @@
 
       <div class="nav-section-title" style="margin-top:8px;">Settings</div>
 
-      <div class="nav-item" onclick="App.showPermPanel()">
-        <span class="nav-item-icon">&#128274;</span> Permissions
-      </div>
+
       <div class="nav-item" onclick="App.showChatSupport()">
         <span class="nav-item-icon">&#128172;</span> Chat Support
       </div>
       <div class="nav-item" onclick="App.showTeamPanel()">
-        <span class="nav-item-icon">&#128101;</span> Team Members
+        <span class="nav-item-icon">&#128101;</span> Members
       </div>
     </nav>
 
@@ -2171,16 +2169,17 @@ var App = (function() {
   function showTeamPanel() {
     state.currentPanel = 'team';
     var el = document.getElementById('content');
-    document.getElementById('toolbarTitle').textContent = 'Team Members';
-    el.innerHTML = '<div style="padding:20px;max-width:800px;margin:0 auto;">' +
+    document.getElementById('toolbarTitle').textContent = 'Members';
+    el.innerHTML = '<div style="padding:20px;max-width:900px;margin:0 auto;">' +
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">' +
       '<span style="color:#9ca3af;font-size:13px;" id="teamCount">Loading...</span>' +
       '<button class="btn btn-primary btn-sm" onclick="App.showAddMemberModal()">+ New Member</button></div>' +
       '<div id="teamTable" style="background:#1a1a35;border:1px solid rgba(255,255,255,0.06);border-radius:10px;overflow:hidden;">' +
       '<table style="width:100%;border-collapse:collapse;">' +
-      '<thead><tr><th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid rgba(255,255,255,0.06);">Name</th>' +
+      '<thead><tr>' +
+      '<th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid rgba(255,255,255,0.06);">Username</th>' +
       '<th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid rgba(255,255,255,0.06);">Email</th>' +
-      '<th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid rgba(255,255,255,0.06);">Group</th>' +
+      '<th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid rgba(255,255,255,0.06);">Permissions</th>' +
       '<th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid rgba(255,255,255,0.06);">Status</th>' +
       '<th style="padding:10px 14px;text-align:right;font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid rgba(255,255,255,0.06);">Actions</th>' +
       '</tr></thead><tbody id="teamBody"><tr><td colspan="5" style="padding:30px;text-align:center;color:#6b7280;">Loading...</td></tr></tbody></table></div></div>';
@@ -2192,56 +2191,75 @@ var App = (function() {
       teamMembers = d.members || [];
       renderTeamTable();
     }).catch(function() {
-      document.getElementById('teamBody').innerHTML = '<tr><td colspan="5" style="padding:30px;text-align:center;color:#6b7280;">Could not load team data from server</td></tr>';
+      document.getElementById('teamBody').innerHTML = '<tr><td colspan="5" style="padding:30px;text-align:center;color:#6b7280;">Could not load members</td></tr>';
     });
-    teamFetch('/groups').then(function(d) {
-      teamGroups = d.groups || [];
-    }).catch(function(){});
   }
 
   function renderTeamTable() {
     document.getElementById('teamCount').textContent = teamMembers.length + ' members';
     var h = '';
     teamMembers.forEach(function(m) {
-      var statusBadge = (m.status === 'active') ?
-        '<span style="padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;background:rgba(0,196,140,0.1);color:#00c48c;border:1px solid rgba(0,196,140,0.25);">Active</span>' :
-        '<span style="padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;background:rgba(244,166,35,0.1);color:#f4a623;border:1px solid rgba(244,166,35,0.25);">Pending</span>';
+      var perms = [];
+      if (m.perm_create_profile) perms.push('Create');
+      if (m.perm_delete_profile) perms.push('Delete');
+      if (m.perm_edit_proxy) perms.push('Proxy');
+      if (m.perm_edit_name) perms.push('Name');
+      if (m.perm_move_profile) perms.push('Move');
+      if (m.perm_create_folder) perms.push('Folder');
+      var permHtml = perms.length ? perms.map(function(p){return '<span style="display:inline-block;padding:1px 6px;border-radius:4px;font-size:9px;background:rgba(245,158,11,0.1);color:#f59e0b;margin:1px;">'+p+'</span>';}).join('') : '<span style="color:#6b7280;font-size:11px;">View only</span>';
+      var statusHtml = m.is_active ? '<span style="padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;background:rgba(16,185,129,0.1);color:#10b981;">Active</span>' : '<span style="padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600;background:rgba(239,68,68,0.1);color:#ef4444;">Disabled</span>';
       h += '<tr style="border-bottom:1px solid rgba(255,255,255,0.04);">' +
-        '<td style="padding:10px 14px;font-weight:500;color:#e2e8f0;">' + esc(m.first_name) + ' ' + esc(m.last_name) + '</td>' +
-        '<td style="padding:10px 14px;color:#6c5ce7;font-size:12px;">' + esc(m.email) + '</td>' +
-        '<td style="padding:10px 14px;color:#9ca3af;font-size:12px;">' + esc(m.group_name || 'None') + '</td>' +
-        '<td style="padding:10px 14px;">' + statusBadge + '</td>' +
+        '<td style="padding:10px 14px;font-weight:600;color:#e2e8f0;">' + esc(m.username) + '</td>' +
+        '<td style="padding:10px 14px;color:#9ca3af;font-size:12px;">' + esc(m.email) + '</td>' +
+        '<td style="padding:10px 14px;">' + permHtml + '</td>' +
+        '<td style="padding:10px 14px;">' + statusHtml + '</td>' +
         '<td style="padding:10px 14px;text-align:right;">' +
-        (m.status !== 'active' ? '<button class="btn btn-primary btn-xs" style="margin-right:4px;" onclick="App.activateMember(&apos;' + m.id + '&apos;)">Accept</button>' : '') +
-        '<button class="btn btn-ghost btn-xs" onclick="App.removeMember(&apos;' + m.id + '&apos;,&apos;' + esc(m.first_name) + '&apos;)">Remove</button></td></tr>';
+        '<button class="btn btn-ghost btn-xs" style="margin-right:4px;" onclick="App.editMemberPerms(' + m.id + ')">Edit</button>' +
+        '<button class="btn btn-ghost btn-xs" onclick="App.removeMember(' + m.id + ',\'' + esc(m.username) + '\')">Remove</button></td></tr>';
     });
-    if (!teamMembers.length) h = '<tr><td colspan="5" style="padding:30px;text-align:center;color:#6b7280;">No members yet. Add your first team member.</td></tr>';
+    if (!teamMembers.length) h = '<tr><td colspan="5" style="padding:30px;text-align:center;color:#6b7280;">No members yet. Create your first member.</td></tr>';
     document.getElementById('teamBody').innerHTML = h;
   }
 
   function showAddMemberModal() {
-    var groupOpts = '<option value="">No Group</option>';
-    teamGroups.forEach(function(g) { groupOpts += '<option value="' + g.id + '">' + esc(g.name) + '</option>'; });
-    var html = '<h3 style="color:#ffffff;font-size:16px;margin-bottom:16px;">Add Member</h3>' +
-      '<div class="form-group"><label>Email</label><input type="email" id="tmEmail" placeholder="va@gmail.com"></div>' +
-      '<div class="form-row"><div class="form-group"><label>First Name</label><input type="text" id="tmFirst" placeholder="John"></div>' +
-      '<div class="form-group"><label>Last Name</label><input type="text" id="tmLast" placeholder="Doe"></div></div>' +
-      '<div class="form-group"><label>Group</label><select id="tmGroup">' + groupOpts + '</select></div>' +
-      '<div id="tmInviteUrl" style="display:none;margin-top:12px;padding:10px;background:rgba(108,92,231,0.1);border:1px solid rgba(108,92,231,0.3);border-radius:8px;font-family:monospace;font-size:11px;color:#6c5ce7;word-break:break-all;"></div>';
+    var licKey = '';
+    try { licKey = window.licenseInfo ? window.licenseInfo.license_key : ''; } catch(e) {}
+    var html = '<h3 style="color:#ffffff;font-size:16px;margin-bottom:16px;">Create Member</h3>' +
+      '<div class="form-group"><label>Email</label><input type="email" id="tmEmail" placeholder="member@email.com"></div>' +
+      '<div class="form-row"><div class="form-group"><label>Username (for login)</label><input type="text" id="tmUsername" placeholder="e.g. va_john"></div>' +
+      '<div class="form-group"><label>Password</label><input type="text" id="tmPassword" placeholder="min 4 characters"></div></div>' +
+      '<div style="margin:16px 0 8px;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.08em;">Permissions</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
+      '<label style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:8px;cursor:pointer;font-size:12px;color:#d1d5db;"><input type="checkbox" id="pmCreate"> Create Profile</label>' +
+      '<label style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:8px;cursor:pointer;font-size:12px;color:#d1d5db;"><input type="checkbox" id="pmDelete"> Delete Profile</label>' +
+      '<label style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:8px;cursor:pointer;font-size:12px;color:#d1d5db;"><input type="checkbox" id="pmProxy"> Edit Proxy</label>' +
+      '<label style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:8px;cursor:pointer;font-size:12px;color:#d1d5db;"><input type="checkbox" id="pmName"> Edit Name</label>' +
+      '<label style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:8px;cursor:pointer;font-size:12px;color:#d1d5db;"><input type="checkbox" id="pmMove"> Move Profile</label>' +
+      '<label style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:8px;cursor:pointer;font-size:12px;color:#d1d5db;"><input type="checkbox" id="pmFolder"> Create Folder</label>' +
+      '</div>';
     openModalWithContent('addMemberModal', html, function() {
-      var body = {email:document.getElementById('tmEmail').value.trim(),first_name:document.getElementById('tmFirst').value.trim(),last_name:document.getElementById('tmLast').value.trim(),group_id:document.getElementById('tmGroup').value};
-      if(!body.email||!body.first_name||!body.last_name){toast('All fields required','error');return;}
-      var serverUrl = document.getElementById('serverUrl').value;
-      teamFetch('/members',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
-      .then(function(d){
-        if(d.status==='ok'){
-          document.getElementById('tmInviteUrl').textContent='Invite URL: '+d.member.invite_url;
-          document.getElementById('tmInviteUrl').style.display='block';
-          toast('Member added!','success');
+      var body = {
+        email: document.getElementById('tmEmail').value.trim(),
+        username: document.getElementById('tmUsername').value.trim(),
+        password: document.getElementById('tmPassword').value,
+        license_key: licKey,
+        perm_create_profile: document.getElementById('pmCreate').checked,
+        perm_delete_profile: document.getElementById('pmDelete').checked,
+        perm_edit_proxy: document.getElementById('pmProxy').checked,
+        perm_edit_name: document.getElementById('pmName').checked,
+        perm_move_profile: document.getElementById('pmMove').checked,
+        perm_create_folder: document.getElementById('pmFolder').checked
+      };
+      if (!body.email || !body.username || !body.password) { toast('All fields required', 'error'); return; }
+      teamFetch('/members', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)})
+      .then(function(d) {
+        if (d.status === 'ok') {
+          toast('Member created! They can login with: ' + body.username, 'success');
+          closeModal('dynamicModal');
           loadTeamData();
-        } else { toast(d.error||'Error','error'); }
+        } else { toast(d.error || 'Error', 'error'); }
       });
-    }, 'Add Member');
+    }, 'Create Member');
   }
 
 
@@ -2249,6 +2267,40 @@ var App = (function() {
     teamFetch('/members/' + id, {method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'active',activated:true})})
     .then(function(d) { toast('Member activated','success'); loadTeamData(); })
     .catch(function() { toast('Failed to activate','error'); });
+  }
+
+
+  function editMemberPerms(id) {
+    var m = teamMembers.find(function(x) { return x.id === id; });
+    if (!m) return;
+    var html = '<h3 style="color:#ffffff;font-size:16px;margin-bottom:16px;">Edit: ' + esc(m.username) + '</h3>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
+      '<label style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:8px;cursor:pointer;font-size:12px;color:#d1d5db;"><input type="checkbox" id="emCreate" ' + (m.perm_create_profile ? 'checked' : '') + '> Create Profile</label>' +
+      '<label style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:8px;cursor:pointer;font-size:12px;color:#d1d5db;"><input type="checkbox" id="emDelete" ' + (m.perm_delete_profile ? 'checked' : '') + '> Delete Profile</label>' +
+      '<label style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:8px;cursor:pointer;font-size:12px;color:#d1d5db;"><input type="checkbox" id="emProxy" ' + (m.perm_edit_proxy ? 'checked' : '') + '> Edit Proxy</label>' +
+      '<label style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:8px;cursor:pointer;font-size:12px;color:#d1d5db;"><input type="checkbox" id="emName" ' + (m.perm_edit_name ? 'checked' : '') + '> Edit Name</label>' +
+      '<label style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:8px;cursor:pointer;font-size:12px;color:#d1d5db;"><input type="checkbox" id="emMove" ' + (m.perm_move_profile ? 'checked' : '') + '> Move Profile</label>' +
+      '<label style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:8px;cursor:pointer;font-size:12px;color:#d1d5db;"><input type="checkbox" id="emFolder" ' + (m.perm_create_folder ? 'checked' : '') + '> Create Folder</label>' +
+      '</div>' +
+      '<div class="form-group" style="margin-top:16px;"><label>Change Password (leave blank to keep)</label><input type="text" id="emPassword" placeholder="New password"></div>';
+    openModalWithContent('editMemberModal', html, function() {
+      var body = {
+        perm_create_profile: document.getElementById('emCreate').checked,
+        perm_delete_profile: document.getElementById('emDelete').checked,
+        perm_edit_proxy: document.getElementById('emProxy').checked,
+        perm_edit_name: document.getElementById('emName').checked,
+        perm_move_profile: document.getElementById('emMove').checked,
+        perm_create_folder: document.getElementById('emFolder').checked
+      };
+      var pw = document.getElementById('emPassword').value;
+      if (pw) body.password = pw;
+      teamFetch('/members/' + id, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)})
+      .then(function(d) {
+        toast('Member updated', 'success');
+        closeModal('dynamicModal');
+        loadTeamData();
+      });
+    }, 'Save Changes');
   }
 
   function removeMember(id, name) {
@@ -2392,8 +2444,9 @@ var App = (function() {
     handleImportFile: handleImportFile,
     showRPAPanel: showRPAPanel,
     showTeamPanel: showTeamPanel,
-    showPermPanel: showPermPanel,
+
     showAddMemberModal: showAddMemberModal,
+    editMemberPerms: editMemberPerms,
     removeMember: removeMember,
     activateMember: activateMember,
     addGroupPrompt: addGroupPrompt,
