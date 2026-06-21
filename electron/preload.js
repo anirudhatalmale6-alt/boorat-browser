@@ -8,5 +8,6 @@ contextBridge.exposeInMainWorld('personax', {
   isElectron: true,
   focusWindow: () => ipcRenderer.invoke('focus-window'),
   openExternal: (url) => ipcRenderer.invoke('open-external', url),
-  memberLogin: (serverUrl, username, password) => ipcRenderer.invoke('member-login', serverUrl, username, password)
+  memberLogin: (serverUrl, username, password) => ipcRenderer.invoke('member-login', serverUrl, username, password),
+  clearLicense: () => ipcRenderer.invoke('clear-license')
 })

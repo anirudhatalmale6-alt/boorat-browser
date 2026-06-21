@@ -1277,37 +1277,14 @@ var App = (function() {
 
   function logout() {
     if (!confirm('Log out of PersonaX?')) return;
-    window.memberInfo = null;
-    window.isMemberLogin = false;
-    // Clear license
+    // Clear saved license key file
     try {
-      var fs = require('fs');
-      var path = require('path');
-      var os = require('os');
-      var licFile = path.join(os.homedir(), '.antidetect', 'license.key');
-      fs.unlinkSync(licFile);
-    } catch(e) {}
-    // Show license modal and force focus
-    var modal = document.getElementById('licenseModal');
-    modal.classList.add('show');
-    // Force Electron window focus via IPC then focus input
-    setTimeout(function() {
-      if (window.personax && window.personax.focusWindow) {
-        window.personax.focusWindow().then(function() {
-          setTimeout(function() {
-            var activeTab = document.getElementById('memberTab').style.display !== 'none' ? 'memberUsername' : 'licenseKeyInput';
-            var input = document.getElementById(activeTab);
-            if (input) { input.focus(); input.click(); }
-          }, 100);
-        });
-      } else {
-        window.focus();
-        var activeTab = document.getElementById('memberTab').style.display !== 'none' ? 'memberUsername' : 'licenseKeyInput';
-        var input = document.getElementById(activeTab);
-        if (input) { input.focus(); input.click(); }
+      if (window.personax && window.personax.clearLicense) {
+        window.personax.clearLicense();
       }
-    }, 200);
-    toast('Logged out', 'success');
+    } catch(e) {}
+    // Full page reload - cleanest way to reset all state
+    window.location.reload();
   }
 
 

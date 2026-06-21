@@ -254,6 +254,14 @@ function setupIPC() {
     })
   })
 
+  ipcMain.handle('clear-license', async () => {
+    try {
+      const licFile = path.join(ANTIDETECT_DIR, 'license.key')
+      fs.unlinkSync(licFile)
+    } catch (e) {}
+    return { ok: true }
+  })
+
   ipcMain.handle('open-external', async (event, url) => {
     shell.openExternal(url)
     return { ok: true }
