@@ -1209,6 +1209,7 @@ var App = (function() {
 
   // Sidebar
   function renderSidebar() {
+    setTimeout(enforcePermissions, 100);
     var total = state.profiles.length;
     document.getElementById('allCount').textContent = total;
 
@@ -1410,26 +1411,39 @@ var App = (function() {
   function enforcePermissions() {
     if (!window.isMemberLogin || !window.memberInfo) return;
     var m = window.memberInfo;
-    // Hide create profile button if no permission
+
+    // Hide create profile buttons
     if (!m.perm_create_profile) {
       document.querySelectorAll('[onclick*="showCreateModal"], [onclick*="showBulkModal"]').forEach(function(el) { el.style.display = 'none'; });
     }
-    // Hide delete buttons if no permission
+
+    // Hide delete buttons on each profile row
     if (!m.perm_delete_profile) {
       document.querySelectorAll('[onclick*="confirmDeleteProfile"]').forEach(function(el) { el.style.display = 'none'; });
     }
-    // Hide move button if no permission
+
+    // Hide edit buttons if no name AND no proxy permission
+    if (!m.perm_edit_name && !m.perm_edit_proxy) {
+      document.querySelectorAll('[onclick*="showEditModal"]').forEach(function(el) { el.style.display = 'none'; });
+    }
+
+    // Hide move button and checkboxes
     if (!m.perm_move_profile) {
       document.querySelectorAll('#moveBtn, .profile-cb').forEach(function(el) { el.style.display = 'none'; });
       var selectAll = document.getElementById('selectAllProfiles');
       if (selectAll) selectAll.style.display = 'none';
     }
-    // Hide create folder if no permission
+
+    // Hide create folder
     if (!m.perm_create_folder) {
       document.querySelectorAll('[onclick*="toggleAddFolder"]').forEach(function(el) { el.style.display = 'none'; });
     }
-    // Hide members section (only for owner)
+
+    // Hide members section (owner only)
     document.querySelectorAll('[onclick*="showTeamPanel"]').forEach(function(el) { el.style.display = 'none'; });
+
+    // Hide trash (owner only)  
+    document.querySelectorAll('[onclick*="showTrash"]').forEach(function(el) { el.style.display = 'none'; });
   }
 
   function selectFolder(folderId) {
