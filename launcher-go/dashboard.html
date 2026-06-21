@@ -712,6 +712,11 @@
         <span class="nav-item-icon">&#128101;</span> Members
       </div>
     </nav>
+    <div style="padding:8px 12px;border-top:1px solid rgba(255,255,255,0.04);">
+      <div class="nav-item" onclick="App.logout()" style="color:#ef4444;">
+        <span class="nav-item-icon">&#10140;</span> Logout
+      </div>
+    </div>
 
     <div class="sidebar-footer">
       <div class="status-line"><span class="dot dot-gray" id="dotServer"></span><span id="serverStatus">Not connected</span></div>
@@ -1418,10 +1423,17 @@ var App = (function() {
       html += '<td style="font-family:monospace;font-size:12px;color:#d29922;">' + esc(customNum || '-') + '</td>';
 
       // OS
-      html += '<td class="col-os">' + esc(osLabel) + '</td>';
+      var osColor = osLabel === 'Windows' ? '#3b82f6' : (osLabel === 'macOS' ? '#a78bfa' : '#10b981');
+      html += '<td class="col-os"><span style="padding:2px 8px;border-radius:6px;font-size:10px;font-weight:600;background:' + osColor + '22;color:' + osColor + ';">' + esc(osLabel) + '</span></td>';
 
       // Proxy
-      html += '<td class="col-proxy">' + esc(proxy) + '</td>';
+      var maskedProxy = proxy;
+      if (proxy !== 'Direct' && proxy.indexOf(':') > 0) {
+        var parts = proxy.split(':');
+        if (parts.length >= 3) maskedProxy = parts[0] + ':' + parts[1] + ':****:****';
+        else maskedProxy = parts[0] + ':' + parts[1];
+      }
+      html += '<td class="col-proxy" style="color:#6b7280;font-size:11px;">' + esc(maskedProxy) + '</td>';
 
       // Status
       html += '<td class="col-status"><span class="status-badge ' + (isRunning ? 'badge-running' : 'badge-ready') + '">' + (isRunning ? 'Running' : 'Ready') + '</span></td>';
@@ -2785,7 +2797,7 @@ function activate() {
     subCard.style.display = '';
 
     // Profile usage
-    var profilesUsed = info.profiles_used || 0;
+    var profilesUsed = (state && state.profiles) ? state.profiles.length : (info.profiles_used || 0);
     var profilesMax = info.max_profiles || 0;
     var profilePct = profilesMax > 0 ? Math.min((profilesUsed / profilesMax) * 100, 100) : 0;
 
