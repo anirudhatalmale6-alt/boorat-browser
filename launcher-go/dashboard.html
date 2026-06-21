@@ -678,9 +678,9 @@
     </div>
 
     <nav class="sidebar-nav">
-      <div class="nav-section-title">Profiles</div>
+      <div class="nav-section-title">Workspace</div>
       <div id="navAll" class="nav-item active" onclick="App.selectFolder(null)">
-        <span class="nav-item-icon">&#128193;</span> All Profiles <span class="count" id="allCount">0</span>
+        <span class="nav-item-icon">&#128193;</span> Profiles <span class="count" id="allCount">0</span>
       </div>
       <div id="folderList"></div>
       <div class="add-folder-row" id="addFolderRow" style="display:none;">
@@ -690,11 +690,8 @@
       <div class="nav-item" onclick="App.toggleAddFolder()" style="color:#6b7280;">
         <span class="nav-item-icon">+</span> New Folder
       </div>
-
-      <div class="nav-section-title" style="margin-top:8px;">Extensions</div>
-      <div id="extensionList"><div style="padding:4px 16px;font-size:11px;color:#6b7280;">No extensions</div></div>
-      <div class="nav-item" onclick="App.openExtensionsFolder()" style="color:#10b981;">
-        <span class="nav-item-icon">&#128194;</span> Open Extensions Folder
+      <div class="nav-item" onclick="App.showTrash()">
+        <span class="nav-item-icon">&#128465;</span> Trash <span class="count" id="trashCount" style="background:rgba(239,68,68,0.15);color:#ef4444;">0</span>
       </div>
 
       <div class="nav-section-title" style="margin-top:8px;">Automation</div>
@@ -702,9 +699,16 @@
         <span class="nav-item-icon">&#129302;</span> RPA Editor
       </div>
 
-      <div class="nav-section-title" style="margin-top:8px;">Settings</div>
+      <div class="nav-section-title" style="margin-top:8px;">Tools</div>
+      <div id="extensionList"><div style="padding:4px 16px;font-size:11px;color:#6b7280;">No extensions</div></div>
+      <div class="nav-item" onclick="App.openExtensionsFolder()" style="color:#10b981;">
+        <span class="nav-item-icon">&#128194;</span> Open Extensions Folder
+      </div>
 
-
+      <div class="nav-section-title" style="margin-top:8px;">Support</div>
+      <div class="nav-item" onclick="window.open('https://personax.work/docs','_blank')">
+        <span class="nav-item-icon">&#128214;</span> Documentation
+      </div>
       <div class="nav-item" onclick="App.showChatSupport()">
         <span class="nav-item-icon">&#128172;</span> Chat Support
       </div>
@@ -1195,6 +1199,7 @@ var App = (function() {
       renderSidebar();
       renderProfiles();
       loadExtensions();
+      updateTrashCount();
       if (typeof License !== 'undefined' && License.updateUI) License.updateUI();
     }).catch(function(err) {
       toast('Refresh failed: ' + err.message, 'error');
@@ -1293,6 +1298,105 @@ var App = (function() {
       }
     }, 300);
     toast('Logged out', 'success');
+  }
+
+
+  var trashedProfiles = JSON.parse(localStorage.getItem('px_trash') || '[]');
+
+  function showTrash() {
+    state.currentPanel = 'trash';
+    var el = document.getElementById('content');
+    document.getElementById('toolbarTitle').textContent = 'Trash';
+
+    var h = '<div style="padding:20px;max-width:900px;margin:0 auto;">';
+    h += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">';
+    h += '<span style="color:#9ca3af;font-size:13px;">' + trashedProfiles.length + ' deleted profiles</span>';
+    if (trashedProfiles.length) h += '<button class="btn btn-ghost btn-sm" onclick="App.emptyTrash()" style="color:#ef4444;">Empty Trash</button>';
+    h += '</div>';
+
+    if (!trashedProfiles.length) {
+      h += '<div style="text-align:center;padding:60px 20px;color:#6b7280;"><div style="font-size:48px;margin-bottom:12px;">&#128465;</div><p style="font-size:14px;">Trash is empty</p><p style="font-size:12px;margin-top:4px;">Deleted profiles will appear here</p></div>';
+    } else {
+      h += '<div style="background:#1a1a35;border:1px solid rgba(255,255,255,0.06);border-radius:10px;overflow:hidden;">';
+      h += '<table style="width:100%;border-collapse:collapse;"><thead><tr>';
+      h += '<th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid rgba(255,255,255,0.06);">Name</th>';
+      h += '<th style="padding:10px 14px;text-align:left;font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid rgba(255,255,255,0.06);">Deleted</th>';
+      h += '<th style="padding:10px 14px;text-align:right;font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid rgba(255,255,255,0.06);">Actions</th>';
+      h += '</tr></thead><tbody>';
+      trashedProfiles.forEach(function(p, i) {
+        h += '<tr style="border-bottom:1px solid rgba(255,255,255,0.04);">';
+        h += '<td style="padding:10px 14px;font-weight:500;color:#e2e8f0;">' + esc(p.name) + '</td>';
+        h += '<td style="padding:10px 14px;color:#6b7280;font-size:12px;">' + (p.deleted_at || 'Unknown') + '</td>';
+        h += '<td style="padding:10px 14px;text-align:right;">';
+        h += '<button class="btn btn-primary btn-xs" style="margin-right:4px;" onclick="App.restoreProfile(' + i + ')">Restore</button>';
+        h += '<button class="btn btn-ghost btn-xs" style="color:#ef4444;" onclick="App.permanentDelete(' + i + ')">Delete Forever</button>';
+        h += '</td></tr>';
+      });
+      h += '</tbody></table></div>';
+    }
+    h += '</div>';
+    el.innerHTML = h;
+  }
+
+  function moveToTrash(profileId, profileName) {
+    var p = state.profiles.find(function(x) { return x.id === profileId; });
+    if (!p) return;
+    trashedProfiles.push({
+      id: p.id,
+      name: p.name || profileName,
+      proxy: p.proxy,
+      folder_id: p.folder_id,
+      deleted_at: new Date().toISOString().split('T')[0]
+    });
+    localStorage.setItem('px_trash', JSON.stringify(trashedProfiles));
+    updateTrashCount();
+    // Actually delete from server
+    api('DELETE', '/api/profiles/' + profileId)
+      .then(function() {
+        toast('Profile moved to trash', 'success');
+        return refresh();
+      });
+  }
+
+  function restoreProfile(index) {
+    var p = trashedProfiles[index];
+    if (!p) return;
+    // Recreate the profile
+    api('POST', '/api/profiles', {
+      name: p.name + ' (restored)',
+      proxy: p.proxy || '',
+      folder_id: p.folder_id || null
+    }).then(function() {
+      trashedProfiles.splice(index, 1);
+      localStorage.setItem('px_trash', JSON.stringify(trashedProfiles));
+      updateTrashCount();
+      toast('Profile restored', 'success');
+      showTrash();
+      refresh();
+    });
+  }
+
+  function permanentDelete(index) {
+    if (!confirm('Permanently delete this profile? This cannot be undone.')) return;
+    trashedProfiles.splice(index, 1);
+    localStorage.setItem('px_trash', JSON.stringify(trashedProfiles));
+    updateTrashCount();
+    toast('Profile permanently deleted', 'success');
+    showTrash();
+  }
+
+  function emptyTrash() {
+    if (!confirm('Permanently delete all ' + trashedProfiles.length + ' profiles in trash?')) return;
+    trashedProfiles = [];
+    localStorage.setItem('px_trash', JSON.stringify(trashedProfiles));
+    updateTrashCount();
+    toast('Trash emptied', 'success');
+    showTrash();
+  }
+
+  function updateTrashCount() {
+    var el = document.getElementById('trashCount');
+    if (el) el.textContent = trashedProfiles.length;
   }
 
   function selectFolder(folderId) {
@@ -1682,11 +1786,10 @@ var App = (function() {
 
   function confirmDeleteProfile(id, name) {
     document.getElementById('confirmTitle').textContent = 'Delete Profile';
-    document.getElementById('confirmMsg').textContent = 'Delete profile "' + name + '"? This cannot be undone.';
+    document.getElementById('confirmMsg').textContent = 'Delete profile "' + name + '"? It will be moved to trash.';
     document.getElementById('confirmBtn').onclick = function() {
-      api('DELETE', '/api/profiles/' + id)
-        .then(function() { toast('Profile deleted', 'success'); closeModal('confirmModal'); return refresh(); })
-        .catch(function(err) { toast('Delete failed: ' + err.message, 'error'); });
+      moveToTrash(id, name);
+      closeModal('confirmModal');
     };
     openModal('confirmModal');
   }
@@ -1903,6 +2006,7 @@ var App = (function() {
   // Init
   pollStatus();
   loadExtensions();
+      updateTrashCount();
   setInterval(pollStatus, 2500);
   setTimeout(function() { connect(); }, 300);
 
@@ -2476,6 +2580,10 @@ var App = (function() {
     connect: connect,
     refresh: refresh,
     logout: logout,
+    showTrash: showTrash,
+    restoreProfile: restoreProfile,
+    permanentDelete: permanentDelete,
+    emptyTrash: emptyTrash,
     getProfileCount: function() { return state.profiles ? state.profiles.length : 0; },
     selectFolder: selectFolder,
     toggleSelectAll: toggleSelectAll,
