@@ -3005,10 +3005,11 @@ var License = (function() {
   }
 
 function activate() {
-    // Clear member state
-    window.memberInfo = null;
-    window.isMemberLogin = false;
-    try { resetPermissions(); } catch(e) { console.log('resetPermissions:', e); }
+    // Only clear member state if this is a license key login (not member login)
+    if (!window.isMemberLogin) {
+      window.memberInfo = null;
+      try { resetPermissions(); } catch(e) {}
+    }
     var input = document.getElementById('licenseKeyInput');
     var btn = document.getElementById('licenseActivateBtn');
     var errorEl = document.getElementById('licenseError');
