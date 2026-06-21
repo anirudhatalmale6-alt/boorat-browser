@@ -1195,6 +1195,7 @@ var App = (function() {
       renderSidebar();
       renderProfiles();
       loadExtensions();
+      if (typeof License !== 'undefined' && License.updateUI) License.updateUI();
     }).catch(function(err) {
       toast('Refresh failed: ' + err.message, 'error');
     });
@@ -2672,7 +2673,7 @@ var License = (function() {
     var errEl = document.getElementById('memberError');
     if (!username || !password) { errEl.textContent = 'Enter username and password'; return; }
     errEl.textContent = 'Logging in...';
-    fetch('https://personax.work/personax-api/api/member/login', {
+    fetch('/api/member/login', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({username: username, password: password})
@@ -2907,7 +2908,8 @@ function activate() {
     showPlans: showPlans,
     closePlans: closePlans,
     checkLicense: checkLicense,
-    canCreateProfile: canCreateProfile
+    canCreateProfile: canCreateProfile,
+    updateUI: function() { if (window.licenseInfo) updateSubscriptionUI(window.licenseInfo); }
   };
 })();
 </script>
