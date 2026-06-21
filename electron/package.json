@@ -1,9 +1,9 @@
 {
-  "name": "boorat",
-  "version": "1.5.2",
-  "description": "Boorat Anti-Detect Browser",
+  "name": "personax",
+  "version": "2.0.0",
+  "description": "PersonaX Anti-Detect Browser",
   "main": "main.js",
-  "author": "Boorat",
+  "author": "PersonaX",
   "license": "UNLICENSED",
   "scripts": {
     "start": "electron .",
@@ -17,9 +17,9 @@
     "electron-builder": "^24.13.3"
   },
   "build": {
-    "appId": "com.boorat.antidetect",
-    "productName": "BOORAT",
-    "artifactName": "BooratSetup.${ext}",
+    "appId": "com.personax.antidetect",
+    "productName": "PERSONAX",
+    "artifactName": "PersonaXSetup.${ext}",
     "directories": {
       "output": "dist"
     },
@@ -27,7 +27,7 @@
       {
         "provider": "github",
         "owner": "anirudhatalmale6-alt",
-        "repo": "boorat-browser",
+        "repo": "personax-browser",
         "releaseType": "release"
       }
     ],
@@ -41,8 +41,8 @@
       "icon": "icon.png",
       "extraResources": [
         {
-          "from": "../launcher-go/boorat-server.exe",
-          "to": "boorat-server.exe"
+          "from": "../launcher-go/personax-server.exe",
+          "to": "personax-server.exe"
         },
         {
           "from": "../launcher-go/builtin-extensions",
@@ -64,11 +64,11 @@
       ],
       "icon": "icon.png",
       "category": "public.app-category.utilities",
-      "artifactName": "BooratSetup-mac-${arch}.${ext}",
+      "artifactName": "PersonaXSetup-mac-${arch}.${ext}",
       "extraResources": [
         {
-          "from": "../launcher-go/boorat-server-${arch}",
-          "to": "boorat-server"
+          "from": "../launcher-go/personax-server-${arch}",
+          "to": "personax-server"
         },
         {
           "from": "../launcher-go/builtin-extensions",
@@ -85,7 +85,7 @@
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "perMachine": true,
-      "shortcutName": "BOORAT",
+      "shortcutName": "PERSONAX",
       "menuCategory": true
     }
   }

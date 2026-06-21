@@ -24,7 +24,7 @@ function getResourcesPath() {
 function getServerExe() {
   const resPath = getResourcesPath()
   const isWin = process.platform === 'win32'
-  const binName = isWin ? 'boorat-server.exe' : 'boorat-server'
+  const binName = isWin ? 'personax-server.exe' : 'personax-server'
   if (app.isPackaged) {
     return path.join(resPath, binName)
   }
@@ -105,8 +105,8 @@ async function startServer() {
     windowsHide: true,
     env: {
       ...process.env,
-      BOORAT_SERVER_MODE: '1',
-      BOORAT_RESOURCES: resPath
+      PERSONAX_SERVER_MODE: '1',
+      PERSONAX_RESOURCES: resPath
     }
   })
 
@@ -140,7 +140,7 @@ function createWindow(port) {
     height: 900,
     minWidth: 1024,
     minHeight: 600,
-    title: 'BOORAT',
+    title: 'PERSONAX',
     autoHideMenuBar: true,
     show: false,
     backgroundColor: '#1a1a2e',
@@ -161,7 +161,7 @@ function createWindow(port) {
   mainWindow.on('page-title-updated', (e) => {
     e.preventDefault()
   })
-  mainWindow.setTitle('BOORAT v' + app.getVersion())
+  mainWindow.setTitle('PERSONAX v' + app.getVersion())
 
   mainWindow.on('closed', () => {
     mainWindow = null
@@ -176,7 +176,7 @@ function buildCleanEnv() {
         upper.startsWith('CHROME_') ||
         upper.startsWith('NODE_') ||
         upper.startsWith('ORIGINAL_XDG') ||
-        upper.startsWith('BOORAT_')) {
+        upper.startsWith('PERSONAX_')) {
       continue
     }
     clean[key] = val
@@ -261,7 +261,7 @@ function setupAutoUpdate() {
     dialog.showMessageBox(mainWindow, {
       type: 'info',
       title: 'Update Available',
-      message: `BOORAT v${info.version} is available (you have v${app.getVersion()})`,
+      message: `PERSONAX v${info.version} is available (you have v${app.getVersion()})`,
       detail: 'Would you like to update now?',
       buttons: ['Update Now', 'Not Right Now'],
       defaultId: 0,
@@ -283,7 +283,7 @@ function setupAutoUpdate() {
     dialog.showMessageBox(mainWindow, {
       type: 'info',
       title: 'Update Ready',
-      message: `BOORAT v${info.version} has been downloaded`,
+      message: `PERSONAX v${info.version} has been downloaded`,
       detail: 'The update will be installed when you restart the app. Restart now?',
       buttons: ['Restart Now', 'Later'],
       defaultId: 0,

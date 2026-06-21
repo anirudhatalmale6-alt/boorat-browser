@@ -1,6 +1,6 @@
 const { contextBridge, ipcRenderer } = require('electron')
 
-contextBridge.exposeInMainWorld('boorat', {
+contextBridge.exposeInMainWorld('personax', {
   launchChrome: (chromePath, args, profileId) =>
     ipcRenderer.invoke('launch-chrome', chromePath, args, profileId),
   stopChrome: (pid) =>

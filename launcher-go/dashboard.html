@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>BOORAT</title>
+<title>PERSONAX</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
@@ -658,7 +658,7 @@
 <!-- Splash Screen -->
 <div id="splashScreen">
   <div class="splash-logo-img" style="display:flex;align-items:center;justify-content:center;font-size:48px;font-weight:700;color:#fff;background:linear-gradient(135deg, #7c3aed 0%, #3b82f6 50%, #14b8a6 100%);">B</div>
-  <div class="splash-title">BOORAT</div>
+  <div class="splash-title">PERSONAX</div>
   <div class="splash-loading">Loading...</div>
 </div>
 
@@ -668,10 +668,10 @@
     <div class="sidebar-header">
       <div class="logo">
         <div class="logo-icon">B</div>
-        <span>BOORAT</span>
+        <span>PERSONAX</span>
       </div>
       <div class="logo-version">v1.0.0</div>
-      <input type="hidden" id="serverUrl" value="https://nickets.xyz/boorat-api">
+      <input type="hidden" id="serverUrl" value="https://nickets.xyz/personax-api">
     </div>
 
     <nav class="sidebar-nav">
@@ -760,7 +760,7 @@
       <div class="rp-workspace">
         <div class="rp-workspace-icon">B</div>
         <div class="rp-workspace-info">
-          <div class="rp-workspace-title">BOORAT <span class="rp-license-badge" id="rpTierBadge" style="display:none;">-</span></div>
+          <div class="rp-workspace-title">PERSONAX <span class="rp-license-badge" id="rpTierBadge" style="display:none;">-</span></div>
           <div class="rp-workspace-sub">Local Workspace</div>
           <div class="rp-workspace-status" id="rpConnectionStatus">
             <span class="dot dot-green"></span> Connected
@@ -820,7 +820,7 @@
 
     <div class="rp-card" id="rpProxyCard">
       <div class="rp-section-header" style="margin-bottom:12px;">
-        <span class="rp-section-title">Boorat Proxy</span>
+        <span class="rp-section-title">PersonaX Proxy</span>
         <span class="rp-section-link" style="cursor:pointer;color:#10b981;" id="rpProxyStatus">&#9679; Active</span>
       </div>
       <div style="display:flex;flex-direction:column;gap:8px;">
@@ -856,7 +856,7 @@
         </div>
       </div>
       <div style="margin-top:10px;text-align:center;">
-        <div style="font-size:10px;color:#4b5563;">Auto-assigned when using Boorat Proxy mode</div>
+        <div style="font-size:10px;color:#4b5563;">Auto-assigned when using PersonaX Proxy mode</div>
       </div>
     </div>
 
@@ -917,7 +917,7 @@
         <label>Proxy</label>
         <select id="profileProxyMode" onchange="App.toggleProxyInput()" style="width:100%;padding:8px 12px;background:#1a1a35;border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:#e2e8f0;margin-bottom:8px;">
           <option value="direct">Direct Connection (No Proxy)</option>
-          <option value="boorat">Boorat Proxy (Random from list)</option>
+          <option value="personax">PersonaX Proxy (Random from list)</option>
           <option value="custom">Custom Proxy</option>
         </select>
         <input type="text" id="profileProxy" placeholder="host:port:username:password" style="display:none;">
@@ -953,7 +953,7 @@
 
       <div class="form-group">
         <label>Startup URL</label>
-        <input type="text" id="profileStartupUrl" placeholder="e.g. https://boorat.xyz/profileid">
+        <input type="text" id="profileStartupUrl" placeholder="e.g. https://personax.xyz/profileid">
         <span class="hint" style="font-size:11px;color:#6b7280;">Opens as the first tab when profile launches. Leave empty for blank page.</span>
       </div>
 
@@ -1023,11 +1023,11 @@
 <div class="license-modal-overlay" id="licenseModal">
   <div class="license-modal">
     <div class="license-logo">B</div>
-    <div class="license-title">BOORAT</div>
+    <div class="license-title">PERSONAX</div>
     <div class="license-subtitle">Enter your license key to get started</div>
     <div id="licenseExpiredBanner" class="license-expired-msg" style="display:none;">Your license has expired. Please enter a new license key to continue.</div>
     <div class="license-input-wrap">
-      <input type="text" id="licenseKeyInput" placeholder="BOORAT-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX" spellcheck="false" autocomplete="off">
+      <input type="text" id="licenseKeyInput" placeholder="PX-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX" spellcheck="false" autocomplete="off">
     </div>
     <div class="license-error" id="licenseError">&nbsp;</div>
     <button class="license-activate-btn" id="licenseActivateBtn" onclick="License.activate()">Activate</button>
@@ -1083,7 +1083,7 @@
       </div>
     </div>
     <div class="plans-footer">
-      <p>Contact your admin for a license key &mdash; <strong>support@boorat.xyz</strong></p>
+      <p>Contact your admin for a license key &mdash; <strong>support@personax.xyz</strong></p>
     </div>
   </div>
 </div>
@@ -1255,7 +1255,7 @@ var App = (function() {
           '<div class="sphere-orbit-dot"></div>' +
           '<div class="sphere-orbit-dot"></div>' +
         '</div>' +
-        '<h1 class="welcome-heading">Welcome to <span class="purple-text">BOORAT</span></h1>' +
+        '<h1 class="welcome-heading">Welcome to <span class="purple-text">PERSONAX</span></h1>' +
         '<p class="welcome-subtitle">Create, manage and automate your browser profiles all in one powerful workspace.</p>' +
         '<button class="welcome-connect-btn" onclick="App.connect()">&#128279; Connect to get started</button>' +
         '<div class="welcome-loading-text"><div class="welcome-spinner"></div> Loading your profiles...</div>' +
@@ -1278,7 +1278,7 @@ var App = (function() {
           '<div class="sphere-orbit-dot"></div>' +
           '<div class="sphere-orbit-dot"></div>' +
         '</div>' +
-        '<h1 class="welcome-heading">Welcome to <span class="purple-text">BOORAT</span></h1>' +
+        '<h1 class="welcome-heading">Welcome to <span class="purple-text">PERSONAX</span></h1>' +
         '<p class="welcome-subtitle">No profiles found. Click "+ New Profile" to create your first one.</p>' +
         '<button class="btn btn-primary" onclick="App.showCreateModal()" style="padding:12px 28px;font-size:14px;border-radius:12px;">+ New Profile</button>' +
         '<div class="welcome-features" style="margin-top:48px;">' +
@@ -1375,10 +1375,10 @@ var App = (function() {
   // Launch / Stop
   function launchProfile(id) {
     // If running inside Electron, use Electron's process spawning (avoids job object issues)
-    if (window.boorat && window.boorat.isElectron) {
+    if (window.personax && window.personax.isElectron) {
       api('POST', '/api/prepare-launch', { profile_id: id })
         .then(function(data) {
-          return window.boorat.launchChrome(data.chrome_path, data.args, data.profile_id).then(function(result) {
+          return window.personax.launchChrome(data.chrome_path, data.args, data.profile_id).then(function(result) {
             if (!result.ok) throw new Error(result.error || 'Electron launch failed');
             // Notify Go server about the PID for tracking
             api('POST', '/api/electron-notify', { profile_id: id, pid: result.pid, action: 'launched' });
@@ -1456,8 +1456,8 @@ var App = (function() {
     document.getElementById('saveProfileBtn').textContent = 'Save Changes';
     document.getElementById('profileName').value = p.name;
     document.getElementById('profileProxy').value = p.proxy || '';
-    if (p.proxy && p.proxy.indexOf('BOORAT:') === 0) {
-      document.getElementById('profileProxyMode').value = 'boorat';
+    if (p.proxy && p.proxy.indexOf('PERSONAX:') === 0) {
+      document.getElementById('profileProxyMode').value = 'personax';
     } else if (p.proxy) {
       document.getElementById('profileProxyMode').value = 'custom';
     } else {
@@ -1694,7 +1694,7 @@ var App = (function() {
         var html = '';
         for (var i = 0; i < exts.length; i++) {
           var e = exts[i];
-          var extName = e.name.replace(/Nickets/gi, 'Boorat').replace(/Nickels/gi, 'Boorat');
+          var extName = e.name.replace(/Nickets/gi, 'PersonaX').replace(/Nickels/gi, 'PersonaX');
           html += '<div class="nav-item" style="cursor:default;">';
           html += '<span class="nav-item-icon" style="font-size:12px;">&#9733;</span> ';
           html += '<span style="font-size:12px;">' + esc(extName) + '</span>';
@@ -1721,9 +1721,9 @@ var App = (function() {
       html += '<pre style="font-size:11px;color:#f87171;white-space:pre-wrap;word-break:break-all;background:rgba(220,38,38,0.1);padding:12px;border-radius:8px;border:1px solid rgba(220,38,38,0.3);margin-bottom:12px;">';
       html += esc(data.chrome_stderr || 'No errors');
       html += '</pre>';
-      html += '<div style="margin-bottom:8px;font-size:12px;font-weight:600;color:#fff;">BOORAT Log (recent)</div>';
+      html += '<div style="margin-bottom:8px;font-size:12px;font-weight:600;color:#fff;">PERSONAX Log (recent)</div>';
       html += '<pre style="font-size:11px;color:#9ca3af;white-space:pre-wrap;word-break:break-all;background:#1a1a35;padding:12px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);">';
-      html += esc(data.boorat_log || 'No log');
+      html += esc(data.personax_log || 'No log');
       html += '</pre>';
       document.getElementById('logModalBody').innerHTML = html;
     }).catch(function(err) {
@@ -1931,17 +1931,17 @@ var App = (function() {
   }
 
   // ─── Proxy List ──────────────────────────────────────────────────────
-  var booratProxies = [];
+  var personaxProxies = [];
 
   function loadProxyList() {
     fetch('/api/proxy-list').then(function(r){return r.json();}).then(function(d) {
-      booratProxies = d.proxies || [];
+      personaxProxies = d.proxies || [];
       updateProxyCard();
     }).catch(function(){});
   }
 
   function updateProxyCard() {
-    var total = booratProxies.length;
+    var total = personaxProxies.length;
     var res = Math.floor(total * 0.6);
     var dc = Math.floor(total * 0.25);
     var mob = total - res - dc;
@@ -1971,9 +1971,9 @@ var App = (function() {
     if (mode === 'custom') {
       input.style.display = '';
       hint.textContent = 'Format: host:port:user:pass';
-    } else if (mode === 'boorat') {
+    } else if (mode === 'personax') {
       input.style.display = 'none';
-      hint.textContent = 'Random proxy from BOORAT list (' + booratProxies.length + ' proxies loaded)';
+      hint.textContent = 'Random proxy from PERSONAX list (' + personaxProxies.length + ' proxies loaded)';
     } else {
       input.style.display = 'none';
       hint.textContent = 'No proxy will be used';
@@ -1982,9 +1982,9 @@ var App = (function() {
 
   function getProxyValue() {
     var mode = document.getElementById('profileProxyMode').value;
-    if (mode === 'boorat') {
-      if (booratProxies.length) {
-        return booratProxies[Math.floor(Math.random() * booratProxies.length)];
+    if (mode === 'personax') {
+      if (personaxProxies.length) {
+        return personaxProxies[Math.floor(Math.random() * personaxProxies.length)];
       }
       toast('Proxy list not loaded. Retrying...', 'error');
       loadProxyList();
@@ -2023,7 +2023,7 @@ var App = (function() {
   }
 
   // ─── Team Management ────────────────────────────────────────────────
-  var TEAM_BASE = 'https://boorat.xyz/team/api';
+  var TEAM_BASE = 'https://personax.xyz/team/api';
   var TEAM_TOKEN = 'sgQppshNpTCAYJ5qIddj8ZvOHl6Vetgs';
   var teamMembers = [];
   var teamGroups = [];
@@ -2268,9 +2268,9 @@ var App = (function() {
     document.getElementById('bulkCreateBtn').disabled = false;
     document.getElementById('bulkCreateBtn').textContent = 'Create Profiles';
     document.getElementById('bulkRandomFp').checked = true;
-    document.getElementById('bulkProxyMode').value = 'boorat';
+    document.getElementById('bulkProxyMode').value = 'personax';
     document.getElementById('bulkCustomProxy').style.display = 'none';
-    document.getElementById('bulkProxyHint').textContent = 'Each profile gets a random proxy from BOORAT list (' + booratProxies.length + ' proxies)';
+    document.getElementById('bulkProxyHint').textContent = 'Each profile gets a random proxy from PERSONAX list (' + personaxProxies.length + ' proxies)';
     var sel = document.getElementById('bulkFolder');
     sel.innerHTML = '<option value="">No folder</option>';
     state.folders.forEach(function(f) {
@@ -2280,7 +2280,7 @@ var App = (function() {
       var m = this.value;
       document.getElementById('bulkCustomProxy').style.display = m === 'custom' ? '' : 'none';
       if (m === 'direct') document.getElementById('bulkProxyHint').textContent = 'No proxy will be used';
-      else if (m === 'boorat') document.getElementById('bulkProxyHint').textContent = 'Each profile gets a random proxy from BOORAT list (' + booratProxies.length + ' proxies)';
+      else if (m === 'personax') document.getElementById('bulkProxyHint').textContent = 'Each profile gets a random proxy from PERSONAX list (' + personaxProxies.length + ' proxies)';
       else document.getElementById('bulkProxyHint').textContent = 'Same proxy for all profiles';
     };
     openModal('bulkModal');
@@ -2299,8 +2299,8 @@ var App = (function() {
     var bulkMode = document.getElementById('bulkProxyMode').value;
     var proxies = [];
     var singleProxy = '';
-    if (bulkMode === 'boorat') {
-      proxies = booratProxies;
+    if (bulkMode === 'personax') {
+      proxies = personaxProxies;
     } else if (bulkMode === 'custom') {
       singleProxy = document.getElementById('bulkCustomProxy').value.trim();
     }
@@ -2309,7 +2309,7 @@ var App = (function() {
       folder_id: folderId,
       proxy: singleProxy,
       random_fingerprint: document.getElementById('bulkRandomFp').checked,
-      random_proxy: bulkMode === 'boorat',
+      random_proxy: bulkMode === 'personax',
       proxy_list: proxies,
       platform: document.getElementById('bulkOS').value
     }).then(function(result) {
@@ -2338,7 +2338,7 @@ var App = (function() {
 </script>
 <script>
 /**
- * BOORAT License Management Module
+ * PERSONAX License Management Module
  * Handles license activation, status display, and profile limit enforcement.
  */
 var License = (function() {
@@ -2426,8 +2426,8 @@ var License = (function() {
     }
 
     // Basic format validation
-    if (key.indexOf('BOORAT-') !== 0) {
-      errorEl.textContent = 'Invalid format. Key must start with BOORAT-';
+    if (key.indexOf('PX-') !== 0) {
+      errorEl.textContent = 'Invalid format. Key must start with PX-';
       return;
     }
 
@@ -2632,7 +2632,7 @@ var License = (function() {
 </script>
 <script>
 /**
- * BOORAT RPA Visual Flow Editor
+ * PERSONAX RPA Visual Flow Editor
  * Self-contained HTML/CSS/JS component for robotic process automation flow editing.
  *
  * Usage:
@@ -4211,17 +4211,17 @@ function initRPAEditor() {
       <div class="form-group">
         <label>Profile IDs (one per line)</label>
         <textarea id="bulkIds" rows="8" placeholder="BY17&#10;BJ89&#10;SL95&#10;..." style="width:100%;padding:10px 12px;background:#1a1a35;border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:#e2e8f0;font-family:monospace;font-size:13px;resize:vertical;"></textarea>
-        <div style="font-size:11px;color:#6b7280;margin-top:4px;">Each line = one profile. Startup URL will be boorat.xyz/{ID}</div>
+        <div style="font-size:11px;color:#6b7280;margin-top:4px;">Each line = one profile. Startup URL will be personax.xyz/{ID}</div>
       </div>
       <div class="form-group">
         <label>Proxy</label>
         <select id="bulkProxyMode" style="width:100%;padding:8px 12px;background:#1a1a35;border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:#e2e8f0;margin-bottom:6px;">
           <option value="direct">Direct Connection (No Proxy)</option>
-          <option value="boorat" selected>Boorat Proxy (Random from list)</option>
+          <option value="personax" selected>PersonaX Proxy (Random from list)</option>
           <option value="custom">Custom Proxy</option>
         </select>
         <input type="text" id="bulkCustomProxy" placeholder="host:port:user:pass" style="display:none;width:100%;padding:8px 12px;background:#1a1a35;border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:#e2e8f0;font-family:monospace;">
-        <div id="bulkProxyHint" style="font-size:11px;color:#6b7280;margin-top:4px;">Each profile gets a random proxy from BOORAT list</div>
+        <div id="bulkProxyHint" style="font-size:11px;color:#6b7280;margin-top:4px;">Each profile gets a random proxy from PERSONAX list</div>
         <textarea id="bulkProxyList" style="display:none;"></textarea>
       </div>
       <div style="display:flex;gap:12px;">

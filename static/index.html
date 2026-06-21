@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BOORAT - Browser Profile Manager</title>
+<title>PERSONAX - Browser Profile Manager</title>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -606,7 +606,7 @@ body {
 <header class="header">
   <div class="header-left">
     <button class="sidebar-toggle" onclick="toggleSidebar()" title="Toggle sidebar">&#9776;</button>
-    <span class="logo">BOORAT</span>
+    <span class="logo">PERSONAX</span>
     <span class="logo-sub">Profile Manager</span>
   </div>
   <div class="header-stats">
@@ -865,7 +865,7 @@ body {
       </p>
       <ol class="launch-steps">
         <li>
-          Download the BOORAT Launcher (one-time, 5.7MB)
+          Download the PERSONAX Launcher (one-time, 5.7MB)
           <div style="margin-top:6px">
             <a href="/ad/downloads/antidetect-launcher.exe" class="btn btn-outline btn-sm" download>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
@@ -876,7 +876,7 @@ body {
         </li>
         <li>
           Double-click the .exe - it opens the launcher GUI in your browser
-          <div style="font-size:12px;color:var(--text-muted);margin-top:4px">Enter server URL: <strong style="color:var(--text-primary)">https://boorat.xyz/ad</strong> and click Connect</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:4px">Enter server URL: <strong style="color:var(--text-primary)">https://personax.xyz/ad</strong> and click Connect</div>
         </li>
         <li>Click Launch on any profile - Chromium opens with proxy, fingerprint, and extensions. Fully isolated from other profiles.</li>
       </ol>
@@ -1468,7 +1468,7 @@ function openLaunchModal(id) {
   const p = profiles.find(x => x.id === id);
   if (!p) return;
   document.getElementById('launch-profile-name').textContent = p.name;
-  document.getElementById('launch-cmd-text').textContent = `python antidetect-launcher.py --server https://boorat.xyz/ad --profile ${p.id} --launch`;
+  document.getElementById('launch-cmd-text').textContent = `python antidetect-launcher.py --server https://personax.xyz/ad --profile ${p.id} --launch`;
   showModal('launch-modal');
 }
 

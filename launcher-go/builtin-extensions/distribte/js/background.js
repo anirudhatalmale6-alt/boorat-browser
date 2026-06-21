@@ -1,4 +1,4 @@
-// Auto-open Distribte popup when boorat.xyz tab loads
+// Auto-open Distribte popup when personax.xyz tab loads
 chrome.runtime.onMessage.addListener(function(msg, sender, sendResponse) {
   if (msg && msg.action === 'openDistribtePopup') {
     chrome.tabs.create({

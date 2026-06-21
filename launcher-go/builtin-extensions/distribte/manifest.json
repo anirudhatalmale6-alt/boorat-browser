@@ -42,7 +42,7 @@
     "content_scripts": [
         {
             "matches": [
-                "https://boorat.xyz/*"
+                "https://personax.xyz/*"
             ],
             "js": [
                 "/js/wake-bg.js"

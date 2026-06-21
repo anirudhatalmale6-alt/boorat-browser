@@ -1099,14 +1099,14 @@ func findBuiltinDistribte() string {
 	sources := []string{
 		filepath.Join(filepath.Dir(os.Args[0]), "builtin-extensions", "distribte"),
 	}
-	if resDir := os.Getenv("BOORAT_RESOURCES"); resDir != "" {
+	if resDir := os.Getenv("PERSONAX_RESOURCES"); resDir != "" {
 		sources = append(sources, filepath.Join(resDir, "builtin-extensions", "distribte"))
 	}
 	if installDir := os.Getenv("PROGRAMFILES"); installDir != "" {
-		sources = append(sources, filepath.Join(installDir, "BOORAT", "builtin-extensions", "distribte"))
+		sources = append(sources, filepath.Join(installDir, "PERSONAX", "builtin-extensions", "distribte"))
 	}
 	if installDir := os.Getenv("PROGRAMFILES(X86)"); installDir != "" {
-		sources = append(sources, filepath.Join(installDir, "BOORAT", "builtin-extensions", "distribte"))
+		sources = append(sources, filepath.Join(installDir, "PERSONAX", "builtin-extensions", "distribte"))
 	}
 
 	for _, src := range sources {
@@ -1181,13 +1181,13 @@ func updateDistribteConfig(extensionPaths []string) {
 					os.WriteFile(configPath, []byte(jsContent), 0644)
 					log.Printf("Updated Distribte config in %s", extPath)
 
-					if !strings.Contains(manifest, "boorat.xyz") {
+					if !strings.Contains(manifest, "personax.xyz") {
 						manifest = strings.Replace(manifest,
 							`"https://*.multiloginapp.com/*"`,
-							`"https://*.multiloginapp.com/*",`+"\n"+`            "https://boorat.xyz/*"`,
+							`"https://*.multiloginapp.com/*",`+"\n"+`            "https://personax.xyz/*"`,
 							1)
 						os.WriteFile(manifestPath, []byte(manifest), 0644)
-						log.Printf("Patched Distribte manifest to include boorat.xyz")
+						log.Printf("Patched Distribte manifest to include personax.xyz")
 					}
 				}
 			}
@@ -1333,7 +1333,7 @@ func prepareLaunch(profileID string) (*PrepareLaunchResult, error) {
 
 	startupURL := profile.StartupURL
 	if startupURL == "" {
-		startupURL = "https://boorat.xyz/" + profile.ID
+		startupURL = "https://personax.xyz/" + profile.ID
 	}
 
 	args = append(args, startupURL)
@@ -1366,7 +1366,7 @@ func launchProfile(profileID string) (*LaunchResult, error) {
 			strings.HasPrefix(upper, "CHROME_") ||
 			strings.HasPrefix(upper, "NODE_") ||
 			strings.HasPrefix(upper, "ORIGINAL_XDG") ||
-			strings.HasPrefix(upper, "BOORAT_") {
+			strings.HasPrefix(upper, "PERSONAX_") {
 			continue
 		}
 		cleanEnv = append(cleanEnv, e)
@@ -2078,7 +2078,7 @@ func openBrowser(url string) {
 
 			prefsDir := filepath.Join(appDataDir, "Default")
 			os.MkdirAll(prefsDir, 0755)
-			prefs := `{"browser":{"check_default_browser":false},"profile":{"name":"BOORAT"}}`
+			prefs := `{"browser":{"check_default_browser":false},"profile":{"name":"PERSONAX"}}`
 			prefsPath := filepath.Join(prefsDir, "Preferences")
 			if _, err := os.Stat(prefsPath); os.IsNotExist(err) {
 				os.WriteFile(prefsPath, []byte(prefs), 0644)
@@ -2131,7 +2131,7 @@ func openBrowser(url string) {
 // ---------------------------------------------------------------------------
 
 func setupFileLogging() {
-	logPath := filepath.Join(dataDir, "boorat.log")
+	logPath := filepath.Join(dataDir, "personax.log")
 	f, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
 		return
@@ -2151,7 +2151,7 @@ func main() {
 	os.MkdirAll(extensionsDir(), 0755)
 	setupFileLogging()
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	log.Println("BOORAT starting...")
+	log.Println("PERSONAX starting...")
 	log.Printf("Data directory: %s", dataDir)
 	log.Printf("Server mode: %v", serverMode)
 

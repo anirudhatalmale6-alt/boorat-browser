@@ -3,13 +3,13 @@ function a0_0x321a(_0x14e9c9,_0x7234e1){var _0x7ede9b=a0_0x7ede();return a0_0x32
 // DISTRIBTE AUTO LOGIN - APPENDED CODE v8.4
 // ============================================
 // v8.4: Close old tabs first, then open popup for auto-login.
-// Keeps boorat.xyz and whoerip tabs alive.
+// Keeps personax.xyz and whoerip tabs alive.
 
 async function closeOldTabs() {
   const tabs = await chrome.tabs.query({});
   for (const tab of tabs) {
     const tabUrl = tab.url || tab.pendingUrl || '';
-    if (tabUrl.includes('boorat.xyz')) continue;
+    if (tabUrl.includes('personax.xyz')) continue;
     if (tabUrl.includes('whoerip.com')) continue;
     try {
       await chrome.tabs.remove(tab.id);

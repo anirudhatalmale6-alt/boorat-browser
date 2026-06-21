@@ -48,7 +48,7 @@ CHROMIUM_PLATFORM = "Win_x64"
 LAST_CHANGE_URL = f"{CHROMIUM_SNAPSHOT_BASE}/{CHROMIUM_PLATFORM}/LAST_CHANGE"
 CHROME_ZIP_URL = f"{CHROMIUM_SNAPSHOT_BASE}/{CHROMIUM_PLATFORM}/{{revision}}/chrome-win.zip"
 
-DEFAULT_SERVER_URL = "https://boorat.xyz/ad"
+DEFAULT_SERVER_URL = "https://personax.xyz/ad"
 UPDATE_CHECK_INTERVAL = 86400  # seconds (24h)
 
 LOG_FORMAT = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
