@@ -1277,15 +1277,18 @@ var App = (function() {
 
   function logout() {
     if (!confirm('Log out of PersonaX?')) return;
-    // Clear saved license key file
-    try {
-      if (window.personax && window.personax.clearLicense) {
-        window.personax.clearLicense();
-      }
-    } catch(e) {}
-    // Full page reload - cleanest way to reset all state
-    isLogoutReload = true;
-    window.location.reload();
+    // Deactivate license on the Go server (deletes the saved key file)
+    fetch('/api/license/deactivate', {method: 'POST'})
+    .then(function() {
+      // Now reload - the Go server will show the license screen since the key is gone
+      isLogoutReload = true;
+      window.location.reload();
+    })
+    .catch(function() {
+      // Even if the API fails, try to reload
+      isLogoutReload = true;
+      window.location.reload();
+    });
   }
 
 
