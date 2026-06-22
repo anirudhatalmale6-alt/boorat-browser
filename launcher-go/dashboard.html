@@ -710,6 +710,9 @@
       <div class="nav-item" onclick="if(window.personax&&window.personax.openExternal){window.personax.openExternal('https://personax.work/docs')}else{window.open('https://personax.work/docs','_blank')}">
         <span class="nav-item-icon">&#128214;</span> Documentation
       </div>
+      <div class="nav-item" onclick="App.showMarketplace()">
+        <span class="nav-item-icon">&#128722;</span> Marketplace
+      </div>
       <div class="nav-item" onclick="App.showBilling()">
         <span class="nav-item-icon">&#128179;</span> Billing
       </div>
@@ -2536,6 +2539,114 @@ function switchProfileTab(tab) {
 
 
 
+  function showMarketplace() {
+    state.currentPanel = 'marketplace';
+    var el = document.getElementById('content');
+    document.getElementById('toolbarTitle').textContent = 'Extension Marketplace';
+
+    el.innerHTML = '<div style="padding:20px;max-width:1000px;margin:0 auto;">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">' +
+        '<div><h2 style="color:#fff;font-size:20px;font-weight:700;margin-bottom:4px;">Extension Marketplace</h2>' +
+        '<p style="color:#6b7280;font-size:13px;">Browse and install extensions for your PersonaX profiles</p></div>' +
+      '</div>' +
+      '<div id="marketplaceGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">' +
+        '<div style="text-align:center;padding:40px;color:#6b7280;grid-column:1/-1;">Loading extensions...</div>' +
+      '</div></div>';
+
+    var licKey = '';
+    if (window.licenseInfo && window.licenseInfo.license_key) licKey = window.licenseInfo.license_key;
+
+    var catalogP = fetch(state.serverUrl + '/api/extensions/catalog').then(function(r) { return r.json(); });
+    var purchasedP = fetch(state.serverUrl + '/api/extensions/purchased?license_key=' + encodeURIComponent(licKey)).then(function(r) { return r.json(); });
+
+    Promise.all([catalogP, purchasedP]).then(function(results) {
+      var extensions = results[0].extensions || [];
+      var purchased = results[1].purchased || [];
+      var grid = document.getElementById('marketplaceGrid');
+
+      if (!extensions.length) {
+        grid.innerHTML = '<div style="text-align:center;padding:60px 20px;color:#6b7280;grid-column:1/-1;"><div style="font-size:48px;margin-bottom:12px;">&#128722;</div><p style="font-size:14px;">No extensions available yet</p></div>';
+        return;
+      }
+
+      var iconMap = {
+        cookie: '&#127850;', form: '&#9998;', shield: '&#128737;', flame: '&#128293;',
+        cart: '&#128722;', eye: '&#128065;', gear: '&#9881;', star: '&#11088;'
+      };
+      var colorMap = {
+        cookie: '#f59e0b', form: '#3b82f6', shield: '#10b981', flame: '#ef4444',
+        cart: '#8b5cf6', eye: '#06b6d4', gear: '#6b7280', star: '#eab308'
+      };
+
+      var html = '';
+      extensions.forEach(function(ext) {
+        var owned = purchased.indexOf(ext.ext_id) >= 0;
+        var isFree = ext.price === 0;
+        var icon = iconMap[ext.icon_url] || '&#128640;';
+        var color = colorMap[ext.icon_url] || '#f59e0b';
+
+        html += '<div style="background:linear-gradient(145deg,#12121f,#1a1a28);border:1px solid ' + (owned ? 'rgba(16,185,129,0.3)' : 'rgba(255,255,255,0.06)') + ';border-radius:14px;padding:20px;transition:.2s;">';
+        html += '<div style="display:flex;align-items:center;gap:14px;margin-bottom:14px;">';
+        html += '<div style="width:48px;height:48px;border-radius:12px;background:' + color + '22;display:flex;align-items:center;justify-content:center;font-size:24px;">' + icon + '</div>';
+        html += '<div style="flex:1;"><div style="font-weight:700;font-size:15px;color:#fff;">' + esc(ext.name) + '</div>';
+        html += '<div style="font-size:11px;color:#6b7280;margin-top:2px;">' + esc(ext.category) + '</div></div>';
+        if (isFree) {
+          html += '<span style="background:rgba(16,185,129,0.1);color:#10b981;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;">FREE</span>';
+        } else {
+          html += '<span style="background:rgba(245,158,11,0.1);color:#f59e0b;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;">$' + ext.price + '</span>';
+        }
+        html += '</div>';
+        html += '<p style="font-size:12px;color:#9ca3af;line-height:1.5;margin-bottom:14px;">' + esc(ext.description) + '</p>';
+
+        if (owned) {
+          html += '<div style="display:flex;align-items:center;gap:8px;"><span style="background:rgba(16,185,129,0.1);color:#10b981;padding:8px 16px;border-radius:8px;font-size:12px;font-weight:700;">&#10003; Installed</span></div>';
+        } else if (isFree) {
+          html += '<button onclick="App.installExtension(\'' + ext.ext_id + '\')" style="padding:8px 20px;background:linear-gradient(135deg,#10b981,#059669);color:#fff;border:none;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;transition:.2s;">Install Free</button>';
+        } else {
+          html += '<button onclick="App.buyExtension(\'' + ext.ext_id + '\',' + ext.price + ')" style="padding:8px 20px;background:linear-gradient(135deg,#f59e0b,#ef4444);color:#fff;border:none;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;transition:.2s;">Buy $' + ext.price + '</button>';
+        }
+        html += '</div>';
+      });
+
+      grid.innerHTML = html;
+    }).catch(function(err) {
+      document.getElementById('marketplaceGrid').innerHTML = '<div style="text-align:center;padding:40px;color:#ef4444;grid-column:1/-1;">Failed to load marketplace: ' + esc(err.message) + '</div>';
+    });
+  }
+
+  function installExtension(extId) {
+    var licKey = '';
+    if (window.licenseInfo && window.licenseInfo.license_key) licKey = window.licenseInfo.license_key;
+    if (!licKey) { toast('No license key found', 'error'); return; }
+
+    fetch(state.serverUrl + '/api/extensions/install', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ext_id: extId, license_key: licKey})
+    }).then(function(r) { return r.json(); }).then(function(d) {
+      if (d.error) { toast(d.error, 'error'); return; }
+      toast('Extension installed! It will load when you launch a profile.', 'success');
+      showMarketplace();
+    });
+  }
+
+  function buyExtension(extId, price) {
+    if (!confirm('Buy this extension for $' + price + '? Contact support to complete payment.')) return;
+    var licKey = '';
+    if (window.licenseInfo && window.licenseInfo.license_key) licKey = window.licenseInfo.license_key;
+    if (!licKey) { toast('No license key found', 'error'); return; }
+
+    fetch(state.serverUrl + '/api/extensions/buy', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ext_id: extId, license_key: licKey})
+    }).then(function(r) { return r.json(); }).then(function(d) {
+      if (d.error) { toast(d.error, 'error'); return; }
+      toast('Extension purchased! It will load when you launch a profile.', 'success');
+      showMarketplace();
+    });
+  }
+
   function showBilling() {
     state.currentPanel = 'billing';
     var el = document.getElementById('content');
@@ -2938,6 +3049,9 @@ function switchProfileTab(tab) {
     deselectAll: deselectAll,
     deleteSelected: deleteSelected,
     showMoveModal: showMoveModal,
+    showMarketplace: showMarketplace,
+    installExtension: installExtension,
+    buyExtension: buyExtension,
     showBilling: showBilling,
     showChatSupport: showChatSupport,
     sendAppChat: sendAppChat,
