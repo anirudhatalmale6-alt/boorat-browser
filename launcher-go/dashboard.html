@@ -736,9 +736,13 @@
       <button class="btn btn-primary btn-sm" onclick="App.showCreateModal()" style="margin-right:4px;">+ New Profile</button>
       <button class="btn btn-ghost btn-sm" onclick="App.showBulkModal()">Bulk Create</button>
       <button class="btn btn-ghost btn-sm" onclick="App.importProfile()">Import</button>
-      <button class="btn btn-ghost btn-sm" style="padding:6px 8px;" onclick="App.viewLog()" title="More options">&#8943;</button>
       <div class="toolbar-actions">
-        <button class="btn btn-ghost btn-sm" id="moveBtn" style="display:none;" onclick="App.showMoveModal()">&#128193; Move Selected</button>
+        <div id="bulkActionsBar" style="display:none;align-items:center;gap:6px;">
+          <span id="selectedCount" style="font-size:12px;color:#9ca3af;font-weight:500;"></span>
+          <button class="btn btn-ghost btn-sm" onclick="App.showMoveModal()" style="font-size:12px;">&#128193; Move</button>
+          <button class="btn btn-ghost btn-sm" onclick="App.deleteSelected()" style="font-size:12px;color:#ef4444;">&#128465; Delete</button>
+          <button class="btn btn-ghost btn-sm" onclick="App.deselectAll()" style="font-size:12px;">&#10005; Deselect</button>
+        </div>
         <div style="display:flex;align-items:center;gap:6px;margin-left:8px;">
           <select id="searchField" style="background:#1a1a28;border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:7px 8px;color:#e2e8f0;font-size:12px;outline:none;cursor:pointer;" onchange="App.filterProfiles()">
             <option value="all">All Fields</option>
@@ -1272,9 +1276,51 @@ var App = (function() {
 
   function updateMoveBtn() {
     var cbs = document.querySelectorAll('.profile-cb:checked');
-    var btn = document.getElementById('moveBtn');
-    if (btn) btn.style.display = cbs.length > 0 ? '' : 'none';
+    var bar = document.getElementById('bulkActionsBar');
+    if (bar) bar.style.display = cbs.length > 0 ? 'flex' : 'none';
+    var countEl = document.getElementById('selectedCount');
+    if (countEl) countEl.textContent = cbs.length + ' selected';
     selectedProfiles = Array.from(cbs).map(function(cb) { return cb.value; });
+    var selectAllCb = document.getElementById('selectAllProfiles');
+    var allCbs = document.querySelectorAll('.profile-cb');
+    if (selectAllCb && allCbs.length > 0) {
+      selectAllCb.checked = cbs.length === allCbs.length;
+      selectAllCb.indeterminate = cbs.length > 0 && cbs.length < allCbs.length;
+    }
+  }
+
+  function deselectAll() {
+    document.querySelectorAll('.profile-cb').forEach(function(cb) { cb.checked = false; });
+    var selectAllCb = document.getElementById('selectAllProfiles');
+    if (selectAllCb) { selectAllCb.checked = false; selectAllCb.indeterminate = false; }
+    updateMoveBtn();
+  }
+
+  function deleteSelected() {
+    if (!selectedProfiles.length) { toast('Select profiles first', 'error'); return; }
+    if (!confirm('Delete ' + selectedProfiles.length + ' selected profile(s)? They will be moved to trash.')) return;
+    selectedProfiles.forEach(function(pid) {
+      var p = state.profiles.find(function(x) { return x.id === pid; });
+      if (p) {
+        trashedProfiles.push({
+          id: p.id,
+          name: p.name || 'Unknown',
+          proxy: p.proxy,
+          folder_id: p.folder_id,
+          deleted_at: new Date().toISOString().split('T')[0]
+        });
+      }
+    });
+    localStorage.setItem('px_trash', JSON.stringify(trashedProfiles));
+    updateTrashCount();
+    var promises = selectedProfiles.map(function(pid) {
+      return api('DELETE', '/api/profiles/' + pid);
+    });
+    Promise.all(promises).then(function() {
+      toast(selectedProfiles.length + ' profiles deleted', 'success');
+      selectedProfiles = [];
+      return refresh();
+    });
   }
 
   function showMoveModal() {
@@ -1424,7 +1470,8 @@ var App = (function() {
     document.querySelectorAll('[onclick*="showCreateModal"], [onclick*="showBulkModal"]').forEach(function(el) { el.style.display = ''; });
     document.querySelectorAll('[onclick*="confirmDeleteProfile"]').forEach(function(el) { el.style.display = ''; });
     document.querySelectorAll('[onclick*="showEditModal"]').forEach(function(el) { el.style.display = ''; });
-    document.querySelectorAll('#moveBtn').forEach(function(el) { el.style.display = 'none'; }); // moveBtn hidden by default
+    var bulkBar = document.getElementById('bulkActionsBar');
+    if (bulkBar) bulkBar.style.display = 'none';
     document.querySelectorAll('.profile-cb').forEach(function(el) { el.style.display = ''; });
     var selectAll = document.getElementById('selectAllProfiles');
     if (selectAll) selectAll.style.display = '';
@@ -1468,9 +1515,11 @@ var App = (function() {
 
     // Hide move button and checkboxes
     if (!m.perm_move_profile) {
-      document.querySelectorAll('#moveBtn, .profile-cb').forEach(function(el) { el.style.display = 'none'; });
+      document.querySelectorAll('.profile-cb').forEach(function(el) { el.style.display = 'none'; });
       var selectAll = document.getElementById('selectAllProfiles');
       if (selectAll) selectAll.style.display = 'none';
+      var bulkBar2 = document.getElementById('bulkActionsBar');
+      if (bulkBar2) bulkBar2.style.display = 'none';
     }
 
     // Hide create folder
@@ -1603,6 +1652,7 @@ var App = (function() {
 
     var html = '<table class="profile-table">';
     html += '<thead class="profile-table-head"><tr>';
+    html += '<th style="width:30px;padding-left:12px;"><input type="checkbox" id="selectAllProfiles" onchange="App.toggleSelectAll(this.checked)" style="cursor:pointer;accent-color:#f59e0b;" title="Select All"></th>';
     html += '<th style="width:22%">Profile</th>';
     html += '<th>Gmail</th>';
     html += '<th>Custom No.</th>';
@@ -2885,6 +2935,8 @@ function switchProfileTab(tab) {
     selectFolder: selectFolder,
     toggleSelectAll: toggleSelectAll,
     updateMoveBtn: updateMoveBtn,
+    deselectAll: deselectAll,
+    deleteSelected: deleteSelected,
     showMoveModal: showMoveModal,
     showBilling: showBilling,
     showChatSupport: showChatSupport,
@@ -2907,7 +2959,6 @@ function switchProfileTab(tab) {
     deleteFolder: deleteFolder,
     downloadChromium: downloadChromium,
     openExtensionsFolder: openExtensionsFolder,
-    viewLog: viewLog,
     closeModal: closeModal,
     exportProfile: exportProfile,
     importProfile: importProfile,
