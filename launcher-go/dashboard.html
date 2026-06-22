@@ -2556,8 +2556,8 @@ function switchProfileTab(tab) {
     var licKey = '';
     if (window.licenseInfo && window.licenseInfo.license_key) licKey = window.licenseInfo.license_key;
 
-    var catalogP = fetch(state.serverUrl + '/api/extensions/catalog').then(function(r) { return r.json(); });
-    var purchasedP = fetch(state.serverUrl + '/api/extensions/purchased?license_key=' + encodeURIComponent(licKey)).then(function(r) { return r.json(); });
+    var catalogP = api('GET', '/api/extensions/catalog');
+    var purchasedP = api('GET', '/api/extensions/purchased?license_key=' + encodeURIComponent(licKey));
 
     Promise.all([catalogP, purchasedP]).then(function(results) {
       var extensions = results[0].extensions || [];
@@ -2619,11 +2619,7 @@ function switchProfileTab(tab) {
     if (window.licenseInfo && window.licenseInfo.license_key) licKey = window.licenseInfo.license_key;
     if (!licKey) { toast('No license key found', 'error'); return; }
 
-    fetch(state.serverUrl + '/api/extensions/install', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ext_id: extId, license_key: licKey})
-    }).then(function(r) { return r.json(); }).then(function(d) {
+    api('POST', '/api/extensions/install', {ext_id: extId, license_key: licKey}).then(function(d) {
       if (d.error) { toast(d.error, 'error'); return; }
       toast('Extension installed! It will load when you launch a profile.', 'success');
       showMarketplace();
@@ -2636,11 +2632,7 @@ function switchProfileTab(tab) {
     if (window.licenseInfo && window.licenseInfo.license_key) licKey = window.licenseInfo.license_key;
     if (!licKey) { toast('No license key found', 'error'); return; }
 
-    fetch(state.serverUrl + '/api/extensions/buy', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ext_id: extId, license_key: licKey})
-    }).then(function(r) { return r.json(); }).then(function(d) {
+    api('POST', '/api/extensions/buy', {ext_id: extId, license_key: licKey}).then(function(d) {
       if (d.error) { toast(d.error, 'error'); return; }
       toast('Extension purchased! It will load when you launch a profile.', 'success');
       showMarketplace();
