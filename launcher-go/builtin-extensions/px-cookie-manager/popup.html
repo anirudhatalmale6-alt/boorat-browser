@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PX Cookie Manager</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      width: 320px;
+      min-height: 200px;
+      background: #0d1117;
+      color: #e2e8f0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 16px 16px 12px;
+      border-bottom: 1px solid #21262d;
+    }
+
+    .header img {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+    }
+
+    .header-text h1 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #f0f6fc;
+      letter-spacing: 0.2px;
+    }
+
+    .header-text span {
+      font-size: 11px;
+      color: #8b949e;
+    }
+
+    .stats {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: #161b22;
+      border-bottom: 1px solid #21262d;
+    }
+
+    .stats .domain {
+      font-size: 12px;
+      color: #8b949e;
+      max-width: 180px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .stats .count {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #f59e0b;
+    }
+
+    .stats .count .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #f59e0b;
+      display: inline-block;
+    }
+
+    .actions {
+      padding: 12px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 10px 12px;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      background: #161b22;
+      color: #e2e8f0;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      outline: none;
+    }
+
+    .btn:hover {
+      background: #1c2333;
+      border-color: #484f58;
+    }
+
+    .btn:active {
+      transform: scale(0.98);
+    }
+
+    .btn-primary {
+      background: #f59e0b;
+      border-color: #f59e0b;
+      color: #0d1117;
+      font-weight: 600;
+    }
+
+    .btn-primary:hover {
+      background: #d97706;
+      border-color: #d97706;
+    }
+
+    .btn-danger {
+      border-color: #f8514966;
+      color: #f85149;
+    }
+
+    .btn-danger:hover {
+      background: #f851491a;
+      border-color: #f85149;
+    }
+
+    .btn svg {
+      width: 14px;
+      height: 14px;
+      flex-shrink: 0;
+    }
+
+    .import-area {
+      display: none;
+      padding: 0 16px 12px;
+    }
+
+    .import-area.visible {
+      display: block;
+    }
+
+    .import-area textarea {
+      width: 100%;
+      height: 120px;
+      padding: 10px;
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      color: #e2e8f0;
+      font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+      font-size: 11px;
+      line-height: 1.4;
+      resize: vertical;
+      outline: none;
+      transition: border-color 0.15s ease;
+    }
+
+    .import-area textarea:focus {
+      border-color: #f59e0b;
+    }
+
+    .import-area textarea::placeholder {
+      color: #484f58;
+    }
+
+    .import-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .status {
+      padding: 0 16px 12px;
+      display: none;
+    }
+
+    .status.visible {
+      display: block;
+    }
+
+    .status-msg {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .status-msg.success {
+      background: #23883214;
+      border: 1px solid #23883266;
+      color: #3fb950;
+    }
+
+    .status-msg.error {
+      background: #f8514914;
+      border: 1px solid #f8514966;
+      color: #f85149;
+    }
+
+    .status-msg svg {
+      width: 14px;
+      height: 14px;
+      flex-shrink: 0;
+    }
+
+    .footer {
+      padding: 8px 16px 12px;
+      border-top: 1px solid #21262d;
+      text-align: center;
+    }
+
+    .footer span {
+      font-size: 10px;
+      color: #484f58;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <img src="icon.png" alt="PX Cookie Manager">
+    <div class="header-text">
+      <h1>PX Cookie Manager</h1>
+      <span>PersonaX Profile Cookies</span>
+    </div>
+  </div>
+
+  <div class="stats">
+    <span class="domain" id="currentDomain">Loading...</span>
+    <span class="count">
+      <span class="dot"></span>
+      <span id="cookieCount">0</span> cookies
+    </span>
+  </div>
+
+  <div class="actions">
+    <div class="btn-row">
+      <button class="btn btn-primary" id="btnExport">
+        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M3.5 13h9a.75.75 0 010 1.5h-9a.75.75 0 010-1.5zM8 1a.75.75 0 01.75.75v7.59l1.72-1.72a.75.75 0 111.06 1.06l-3 3a.75.75 0 01-1.06 0l-3-3a.75.75 0 111.06-1.06l1.72 1.72V1.75A.75.75 0 018 1z"/></svg>
+        Export Cookies
+      </button>
+      <button class="btn" id="btnExportAll">
+        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M2.75 14A1.75 1.75 0 011 12.25v-8.5C1 2.784 1.784 2 2.75 2h3.204a1.75 1.75 0 011.237.513l.792.792c.117.117.276.183.442.183h4.825c.966 0 1.75.784 1.75 1.75v7.012A1.75 1.75 0 0113.25 14H2.75z"/></svg>
+        Export All
+      </button>
+    </div>
+    <div class="btn-row">
+      <button class="btn" id="btnImport">
+        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M3.5 13h9a.75.75 0 010 1.5h-9a.75.75 0 010-1.5zM8 12a.75.75 0 01-.53-.22l-3-3a.75.75 0 111.06-1.06L7.25 9.44V1.75a.75.75 0 011.5 0v7.69l1.72-1.72a.75.75 0 111.06 1.06l-3 3A.75.75 0 018 12z" transform="rotate(180 8 7.5)"/></svg>
+        Import Cookies
+      </button>
+      <button class="btn btn-danger" id="btnClear">
+        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M6.5 1.75a.25.25 0 01.25-.25h2.5a.25.25 0 01.25.25V3h-3V1.75zm4.5 0V3h2.25a.75.75 0 010 1.5H2.75a.75.75 0 010-1.5H5V1.75C5 .784 5.784 0 6.75 0h2.5C10.216 0 11 .784 11 1.75zM4.496 6.675a.75.75 0 10-1.492.15l.66 6.6A1.75 1.75 0 005.405 15h5.19a1.75 1.75 0 001.741-1.575l.66-6.6a.75.75 0 00-1.492-.15l-.66 6.6a.25.25 0 01-.249.225h-5.19a.25.25 0 01-.249-.225l-.66-6.6z"/></svg>
+        Clear All
+      </button>
+    </div>
+  </div>
+
+  <div class="import-area" id="importArea">
+    <textarea id="importText" placeholder='Paste cookie JSON here...&#10;&#10;Supported formats:&#10;- Array of cookie objects&#10;- Netscape/EditThisCookie format'></textarea>
+    <div class="import-actions">
+      <button class="btn btn-primary" id="btnDoImport" style="flex:2">
+        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z"/></svg>
+        Apply Cookies
+      </button>
+      <button class="btn" id="btnCancelImport" style="flex:1">Cancel</button>
+    </div>
+  </div>
+
+  <div class="status" id="statusArea">
+    <div class="status-msg" id="statusMsg"></div>
+  </div>
+
+  <div class="footer">
+    <span>PersonaX Browser</span>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
