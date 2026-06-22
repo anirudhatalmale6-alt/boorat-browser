@@ -983,6 +983,117 @@ func findBuiltinExtDir() string {
 }
 
 // ---------------------------------------------------------------------------
+// Marketplace install/uninstall handlers
+// ---------------------------------------------------------------------------
+
+func handleMarketplaceInstall(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		jsonError(w, "POST required", 405)
+		return
+	}
+	var req struct {
+		ExtID       string `json:"ext_id"`
+		DownloadURL string `json:"download_url"`
+		FolderName  string `json:"folder_name"`
+	}
+	json.NewDecoder(r.Body).Decode(&req)
+	if req.ExtID == "" || req.DownloadURL == "" {
+		jsonError(w, "ext_id and download_url required", 400)
+		return
+	}
+	folderName := req.FolderName
+	if folderName == "" {
+		folderName = req.ExtID
+	}
+
+	downloadURL := "https://personax.work" + req.DownloadURL
+	log.Printf("Downloading extension %s from %s", req.ExtID, downloadURL)
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Get(downloadURL)
+	if err != nil {
+		jsonError(w, fmt.Sprintf("Download failed: %v", err), 500)
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		jsonError(w, fmt.Sprintf("Download failed: HTTP %d", resp.StatusCode), 500)
+		return
+	}
+
+	zipData, err := io.ReadAll(resp.Body)
+	if err != nil {
+		jsonError(w, fmt.Sprintf("Read failed: %v", err), 500)
+		return
+	}
+
+	extDir := filepath.Join(extensionsDir(), folderName)
+	os.RemoveAll(extDir)
+	os.MkdirAll(extDir, 0755)
+
+	zipReader, err := zip.NewReader(bytes.NewReader(zipData), int64(len(zipData)))
+	if err != nil {
+		jsonError(w, fmt.Sprintf("Invalid zip: %v", err), 500)
+		return
+	}
+
+	for _, f := range zipReader.File {
+		fpath := filepath.Join(extDir, f.Name)
+		if f.FileInfo().IsDir() {
+			os.MkdirAll(fpath, 0755)
+			continue
+		}
+		os.MkdirAll(filepath.Dir(fpath), 0755)
+		outFile, err := os.Create(fpath)
+		if err != nil {
+			continue
+		}
+		rc, err := f.Open()
+		if err != nil {
+			outFile.Close()
+			continue
+		}
+		io.Copy(outFile, rc)
+		rc.Close()
+		outFile.Close()
+	}
+
+	log.Printf("Extension %s installed to %s", req.ExtID, extDir)
+	jsonOK(w, map[string]interface{}{"status": "ok", "path": extDir})
+}
+
+func handleMarketplaceUninstall(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		jsonError(w, "POST required", 405)
+		return
+	}
+	var req struct {
+		ExtID      string `json:"ext_id"`
+		FolderName string `json:"folder_name"`
+	}
+	json.NewDecoder(r.Body).Decode(&req)
+	if req.ExtID == "" {
+		jsonError(w, "ext_id required", 400)
+		return
+	}
+	folderName := req.FolderName
+	if folderName == "" {
+		folderName = req.ExtID
+	}
+
+	extDir := filepath.Join(extensionsDir(), folderName)
+	if _, err := os.Stat(extDir); os.IsNotExist(err) {
+		jsonOK(w, map[string]interface{}{"status": "ok", "message": "already removed"})
+		return
+	}
+
+	os.RemoveAll(extDir)
+	log.Printf("Extension %s uninstalled from %s", req.ExtID, extDir)
+	jsonOK(w, map[string]interface{}{"status": "ok"})
+}
+
+// ---------------------------------------------------------------------------
 // User extensions management
 // ---------------------------------------------------------------------------
 
@@ -2281,6 +2392,8 @@ func main() {
 	mux.HandleFunc("/api/proxy-list", withCORS(handleProxyList))
 	mux.HandleFunc("/api/extensions", withCORS(handleExtensions))
 	mux.HandleFunc("/api/open-extensions", withCORS(handleOpenExtensionsFolder))
+	mux.HandleFunc("/api/marketplace/install", withCORS(handleMarketplaceInstall))
+	mux.HandleFunc("/api/marketplace/uninstall", withCORS(handleMarketplaceUninstall))
 	mux.HandleFunc("/api/license/activate", withCORS(handleLicenseActivate))
 	mux.HandleFunc("/api/license/status", withCORS(handleLicenseStatus))
 	mux.HandleFunc("/api/license/deactivate", withCORS(handleLicenseDeactivate))

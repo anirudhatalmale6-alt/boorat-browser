@@ -2564,6 +2564,8 @@ function switchProfileTab(tab) {
       var purchased = results[1].purchased || [];
       var grid = document.getElementById('marketplaceGrid');
 
+      marketplaceCatalog = extensions;
+
       if (!extensions.length) {
         grid.innerHTML = '<div style="text-align:center;padding:60px 20px;color:#6b7280;grid-column:1/-1;"><div style="font-size:48px;margin-bottom:12px;">&#128722;</div><p style="font-size:14px;">No extensions available yet</p></div>';
         return;
@@ -2599,7 +2601,8 @@ function switchProfileTab(tab) {
         html += '<p style="font-size:12px;color:#9ca3af;line-height:1.5;margin-bottom:14px;">' + esc(ext.description) + '</p>';
 
         if (owned) {
-          html += '<div style="display:flex;align-items:center;gap:8px;"><span style="background:rgba(16,185,129,0.1);color:#10b981;padding:8px 16px;border-radius:8px;font-size:12px;font-weight:700;">&#10003; Installed</span></div>';
+          html += '<div style="display:flex;align-items:center;gap:8px;"><span style="background:rgba(16,185,129,0.1);color:#10b981;padding:8px 16px;border-radius:8px;font-size:12px;font-weight:700;">&#10003; Installed</span>';
+          html += '<button onclick="App.uninstallExtension(\'' + ext.ext_id + '\')" style="padding:8px 14px;background:none;border:1px solid rgba(239,68,68,0.3);color:#ef4444;border-radius:8px;font-size:11px;cursor:pointer;">Uninstall</button></div>';
         } else if (isFree) {
           html += '<button onclick="App.installExtension(\'' + ext.ext_id + '\')" style="padding:8px 20px;background:linear-gradient(135deg,#10b981,#059669);color:#fff;border:none;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer;transition:.2s;">Install Free</button>';
         } else {
@@ -2614,14 +2617,24 @@ function switchProfileTab(tab) {
     });
   }
 
+  var marketplaceCatalog = [];
+
   function installExtension(extId) {
     var licKey = '';
     if (window.licenseInfo && window.licenseInfo.license_key) licKey = window.licenseInfo.license_key;
     if (!licKey) { toast('No license key found', 'error'); return; }
 
+    var ext = marketplaceCatalog.find(function(e) { return e.ext_id === extId; });
+    if (!ext) { toast('Extension not found', 'error'); return; }
+
+    toast('Installing ' + ext.name + '...', 'success');
+
     api('POST', '/api/extensions/install', {ext_id: extId, license_key: licKey}).then(function(d) {
       if (d.error) { toast(d.error, 'error'); return; }
-      toast('Extension installed! It will load when you launch a profile.', 'success');
+      return api('POST', '/api/marketplace/install', {ext_id: extId, download_url: ext.download_url, folder_name: ext.folder_name});
+    }).then(function(d) {
+      if (d && d.error) { toast(d.error, 'error'); return; }
+      toast(ext.name + ' installed! It will load when you launch a profile.', 'success');
       showMarketplace();
     });
   }
@@ -2632,9 +2645,28 @@ function switchProfileTab(tab) {
     if (window.licenseInfo && window.licenseInfo.license_key) licKey = window.licenseInfo.license_key;
     if (!licKey) { toast('No license key found', 'error'); return; }
 
+    var ext = marketplaceCatalog.find(function(e) { return e.ext_id === extId; });
+    if (!ext) { toast('Extension not found', 'error'); return; }
+
+    toast('Processing purchase...', 'success');
+
     api('POST', '/api/extensions/buy', {ext_id: extId, license_key: licKey}).then(function(d) {
       if (d.error) { toast(d.error, 'error'); return; }
-      toast('Extension purchased! It will load when you launch a profile.', 'success');
+      return api('POST', '/api/marketplace/install', {ext_id: extId, download_url: ext.download_url, folder_name: ext.folder_name});
+    }).then(function(d) {
+      if (d && d.error) { toast(d.error, 'error'); return; }
+      toast(ext.name + ' purchased and installed!', 'success');
+      showMarketplace();
+    });
+  }
+
+  function uninstallExtension(extId) {
+    if (!confirm('Uninstall this extension?')) return;
+    var ext = marketplaceCatalog.find(function(e) { return e.ext_id === extId; });
+    var folderName = ext ? ext.folder_name : extId;
+
+    api('POST', '/api/marketplace/uninstall', {ext_id: extId, folder_name: folderName}).then(function(d) {
+      toast('Extension uninstalled', 'success');
       showMarketplace();
     });
   }
@@ -3044,6 +3076,7 @@ function switchProfileTab(tab) {
     showMarketplace: showMarketplace,
     installExtension: installExtension,
     buyExtension: buyExtension,
+    uninstallExtension: uninstallExtension,
     showBilling: showBilling,
     showChatSupport: showChatSupport,
     sendAppChat: sendAppChat,
