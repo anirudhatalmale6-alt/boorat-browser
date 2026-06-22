@@ -894,6 +894,95 @@ chrome.webRequest.onAuthRequired.addListener(
 }
 
 // ---------------------------------------------------------------------------
+// Marketplace extensions (purchased/installed via API)
+// ---------------------------------------------------------------------------
+
+type MarketplaceExt struct {
+	Name string
+	Path string
+}
+
+func loadMarketplaceExtensions() []MarketplaceExt {
+	keyBytes, err := os.ReadFile(licenseFilePath())
+	if err != nil {
+		return nil
+	}
+	licKey := strings.TrimSpace(string(keyBytes))
+	if licKey == "" {
+		return nil
+	}
+
+	url := licenseAPIBase + "/api/extensions/purchased?license_key=" + licKey
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Get(url)
+	if err != nil {
+		log.Printf("Failed to check purchased extensions: %v", err)
+		return nil
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+
+	var result struct {
+		Purchased []string `json:"purchased"`
+	}
+	if err := json.Unmarshal(body, &result); err != nil {
+		log.Printf("Failed to parse purchased extensions: %v", err)
+		return nil
+	}
+
+	if len(result.Purchased) == 0 {
+		return nil
+	}
+
+	builtinDir := findBuiltinExtDir()
+	if builtinDir == "" {
+		log.Printf("Could not find builtin-extensions directory")
+		return nil
+	}
+
+	var exts []MarketplaceExt
+	for _, extID := range result.Purchased {
+		extPath := filepath.Join(builtinDir, extID)
+		if _, err := os.Stat(filepath.Join(extPath, "manifest.json")); err != nil {
+			log.Printf("Marketplace ext %s not found at %s", extID, extPath)
+			continue
+		}
+		name := extID
+		data, _ := os.ReadFile(filepath.Join(extPath, "manifest.json"))
+		var m map[string]interface{}
+		if json.Unmarshal(data, &m) == nil {
+			if n, ok := m["name"].(string); ok {
+				name = n
+			}
+		}
+		exts = append(exts, MarketplaceExt{Name: name, Path: extPath})
+	}
+
+	log.Printf("Loaded %d marketplace extensions for license %s...", len(exts), licKey[:min(12, len(licKey))])
+	return exts
+}
+
+func findBuiltinExtDir() string {
+	candidates := []string{
+		filepath.Join(dataDir, "builtin-extensions"),
+		filepath.Join(filepath.Dir(os.Args[0]), "builtin-extensions"),
+	}
+	if runtime.GOOS == "windows" {
+		resDir := filepath.Join(filepath.Dir(os.Args[0]), "..", "resources")
+		candidates = append(candidates, filepath.Join(resDir, "builtin-extensions"))
+	} else {
+		resDir := filepath.Join(filepath.Dir(os.Args[0]), "..", "Resources")
+		candidates = append(candidates, filepath.Join(resDir, "builtin-extensions"))
+	}
+	for _, c := range candidates {
+		if _, err := os.Stat(c); err == nil {
+			return c
+		}
+	}
+	return ""
+}
+
+// ---------------------------------------------------------------------------
 // User extensions management
 // ---------------------------------------------------------------------------
 
@@ -1314,6 +1403,13 @@ func prepareLaunch(profileID string) (*PrepareLaunchResult, error) {
 			loadedExtNames = append(loadedExtNames, ext.Name)
 			log.Printf("Loading user extension: %s (%s)", ext.Name, ext.Path)
 		}
+	}
+
+	marketExts := loadMarketplaceExtensions()
+	for _, mext := range marketExts {
+		extensions = append(extensions, mext.Path)
+		loadedExtNames = append(loadedExtNames, mext.Name)
+		log.Printf("Loading marketplace extension: %s (%s)", mext.Name, mext.Path)
 	}
 
 	args = append(args, "--load-extension="+strings.Join(extensions, ","))
