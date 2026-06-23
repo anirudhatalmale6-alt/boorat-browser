@@ -248,6 +248,9 @@ func withCORS(next http.HandlerFunc) http.HandlerFunc {
 // ---------------------------------------------------------------------------
 
 func chromiumExePath() string {
+	if runtime.GOOS == "darwin" {
+		return filepath.Join(dataDir, "chromium", "chrome-mac", "Chromium.app", "Contents", "MacOS", "Chromium")
+	}
 	return filepath.Join(dataDir, "chromium", "chrome-win", "chrome.exe")
 }
 
@@ -286,9 +289,31 @@ func downloadChromium() {
 			log.Printf("Chromium download error: %s", msg)
 		}
 
-		// 1. Get latest revision
-		log.Println("Fetching latest Chromium revision...")
-		resp, err := http.Get("https://storage.googleapis.com/chromium-browser-snapshots/Win_x64/LAST_CHANGE")
+		setProgress := func(pct float64) {
+			mu.Lock()
+			downloadProgress = pct
+			mu.Unlock()
+		}
+
+		dlClient := &http.Client{Timeout: 10 * time.Minute}
+		metaClient := &http.Client{Timeout: 30 * time.Second}
+
+		var platform, zipName string
+		switch runtime.GOOS {
+		case "darwin":
+			if runtime.GOARCH == "arm64" {
+				platform = "Mac_Arm"
+			} else {
+				platform = "Mac"
+			}
+			zipName = "chrome-mac.zip"
+		default:
+			platform = "Win_x64"
+			zipName = "chrome-win.zip"
+		}
+
+		log.Printf("Fetching latest Chromium revision for %s...", platform)
+		resp, err := metaClient.Get("https://storage.googleapis.com/chromium-browser-snapshots/" + platform + "/LAST_CHANGE")
 		if err != nil {
 			setErr(fmt.Sprintf("Failed to fetch revision: %v", err))
 			return
@@ -302,72 +327,39 @@ func downloadChromium() {
 		revision := strings.TrimSpace(string(body))
 		log.Printf("Latest Chromium revision: %s", revision)
 
-		mu.Lock()
-		downloadProgress = 5
-		mu.Unlock()
+		setProgress(5)
 
-		// 2. Download the zip
-		zipURL := fmt.Sprintf("https://storage.googleapis.com/chromium-browser-snapshots/Win_x64/%s/chrome-win.zip", revision)
-		log.Printf("Downloading: %s", zipURL)
-
-		resp, err = http.Get(zipURL)
-		if err != nil {
-			setErr(fmt.Sprintf("Download failed: %v", err))
-			return
-		}
-		defer resp.Body.Close()
-
-		if resp.StatusCode != 200 {
-			setErr(fmt.Sprintf("Download returned HTTP %d", resp.StatusCode))
-			return
-		}
-
-		totalSize := resp.ContentLength
+		zipURL := fmt.Sprintf("https://storage.googleapis.com/chromium-browser-snapshots/%s/%s/%s", platform, revision, zipName)
 		destDir := filepath.Join(dataDir, "chromium")
 		os.MkdirAll(destDir, 0755)
-		zipPath := filepath.Join(destDir, "chrome-win.zip")
+		zipPath := filepath.Join(destDir, zipName)
 
-		out, err := os.Create(zipPath)
-		if err != nil {
-			setErr(fmt.Sprintf("Cannot create zip file: %v", err))
+		maxRetries := 3
+		var lastErr error
+		for attempt := 1; attempt <= maxRetries; attempt++ {
+			if attempt > 1 {
+				log.Printf("Retry %d/%d for Chromium download...", attempt, maxRetries)
+				setProgress(5)
+				mu.Lock()
+				downloadError = ""
+				mu.Unlock()
+				time.Sleep(3 * time.Second)
+			}
+
+			lastErr = downloadChromiumZip(dlClient, zipURL, zipPath, setProgress)
+			if lastErr == nil {
+				break
+			}
+			log.Printf("Download attempt %d failed: %v", attempt, lastErr)
+		}
+
+		if lastErr != nil {
+			os.Remove(zipPath)
+			setErr(fmt.Sprintf("Download failed after %d attempts: %v", maxRetries, lastErr))
 			return
 		}
 
-		var downloaded int64
-		buf := make([]byte, 256*1024)
-		for {
-			n, readErr := resp.Body.Read(buf)
-			if n > 0 {
-				_, writeErr := out.Write(buf[:n])
-				if writeErr != nil {
-					out.Close()
-					setErr(fmt.Sprintf("Write error: %v", writeErr))
-					return
-				}
-				downloaded += int64(n)
-				if totalSize > 0 {
-					pct := 5.0 + (float64(downloaded)/float64(totalSize))*80.0
-					mu.Lock()
-					downloadProgress = pct
-					mu.Unlock()
-				}
-			}
-			if readErr != nil {
-				if readErr == io.EOF {
-					break
-				}
-				out.Close()
-				setErr(fmt.Sprintf("Read error: %v", readErr))
-				return
-			}
-		}
-		out.Close()
-		log.Printf("Downloaded %d bytes", downloaded)
-
-		// 3. Extract zip
-		mu.Lock()
-		downloadProgress = 87
-		mu.Unlock()
+		setProgress(87)
 		log.Println("Extracting Chromium...")
 
 		if err := extractZip(zipPath, destDir); err != nil {
@@ -377,13 +369,94 @@ func downloadChromium() {
 
 		os.Remove(zipPath)
 
-		mu.Lock()
-		downloadProgress = 100
-		mu.Unlock()
+		if runtime.GOOS == "darwin" {
+			chromeBin := chromiumExePath()
+			os.Chmod(chromeBin, 0755)
+			helpersDir := filepath.Join(dataDir, "chromium", "chrome-mac", "Chromium.app", "Contents", "Frameworks")
+			filepath.Walk(helpersDir, func(path string, info os.FileInfo, err error) error {
+				if err == nil && !info.IsDir() && strings.Contains(path, "MacOS") {
+					os.Chmod(path, 0755)
+				}
+				return nil
+			})
+		}
 
+		setProgress(100)
 		checkChromium()
 		log.Println("Chromium ready!")
 	}()
+}
+
+func downloadChromiumZip(client *http.Client, zipURL, zipPath string, setProgress func(float64)) error {
+	log.Printf("Downloading: %s", zipURL)
+
+	req, err := http.NewRequest("GET", zipURL, nil)
+	if err != nil {
+		return fmt.Errorf("request creation failed: %v", err)
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("request failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("HTTP %d", resp.StatusCode)
+	}
+
+	totalSize := resp.ContentLength
+	log.Printf("Chromium zip size: %d bytes (%.1f MB)", totalSize, float64(totalSize)/1048576)
+
+	out, err := os.Create(zipPath)
+	if err != nil {
+		return fmt.Errorf("cannot create zip: %v", err)
+	}
+	defer out.Close()
+
+	type readResult struct {
+		n   int
+		err error
+	}
+
+	var downloaded int64
+	buf := make([]byte, 256*1024)
+	stallTimeout := 60 * time.Second
+
+	for {
+		ch := make(chan readResult, 1)
+		go func() {
+			n, err := resp.Body.Read(buf)
+			ch <- readResult{n, err}
+		}()
+
+		select {
+		case res := <-ch:
+			if res.n > 0 {
+				_, writeErr := out.Write(buf[:res.n])
+				if writeErr != nil {
+					return fmt.Errorf("write error: %v", writeErr)
+				}
+				downloaded += int64(res.n)
+				if totalSize > 0 {
+					pct := 5.0 + (float64(downloaded)/float64(totalSize))*80.0
+					setProgress(pct)
+				}
+			}
+			if res.err != nil {
+				if res.err == io.EOF {
+					log.Printf("Downloaded %d bytes", downloaded)
+					if totalSize > 0 && downloaded < totalSize {
+						return fmt.Errorf("incomplete: got %d of %d bytes", downloaded, totalSize)
+					}
+					return nil
+				}
+				return fmt.Errorf("read error after %d bytes: %v", downloaded, res.err)
+			}
+		case <-time.After(stallTimeout):
+			return fmt.Errorf("download stalled at %d bytes (no data for %v)", downloaded, stallTimeout)
+		}
+	}
 }
 
 func extractZip(zipPath, destDir string) error {
@@ -940,8 +1013,14 @@ func loadMarketplaceExtensions() []MarketplaceExt {
 		return nil
 	}
 
+	userExtDir := extensionsDir()
 	var exts []MarketplaceExt
 	for _, extID := range result.Purchased {
+		// Skip if already installed in user extensions dir (avoid duplicate loading)
+		if _, err := os.Stat(filepath.Join(userExtDir, extID, "manifest.json")); err == nil {
+			log.Printf("Marketplace ext %s already in user extensions, skipping builtin", extID)
+			continue
+		}
 		extPath := filepath.Join(builtinDir, extID)
 		if _, err := os.Stat(filepath.Join(extPath, "manifest.json")); err != nil {
 			log.Printf("Marketplace ext %s not found at %s", extID, extPath)
@@ -1525,6 +1604,15 @@ func prepareLaunch(profileID string) (*PrepareLaunchResult, error) {
 
 	args = append(args, "--load-extension="+strings.Join(extensions, ","))
 
+	// Write license key to each extension dir for validation
+	licKeyBytes, _ := os.ReadFile(licenseFilePath())
+	licKey := strings.TrimSpace(string(licKeyBytes))
+	if licKey != "" {
+		for _, extPath := range extensions {
+			os.WriteFile(filepath.Join(extPath, ".px_license"), []byte(licKey), 0644)
+		}
+	}
+
 	// Clean ALL session restore data to prevent duplicate tabs
 	prefsDir := filepath.Join(profileDir, "Default")
 	os.MkdirAll(prefsDir, 0755)
@@ -1661,7 +1749,18 @@ func handleIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Write([]byte(dashboardHTML))
+	html := dashboardHTML
+	settingsFile := filepath.Join(dataDir, "ui-settings.json")
+	if data, err := os.ReadFile(settingsFile); err == nil {
+		var s map[string]interface{}
+		if json.Unmarshal(data, &s) == nil {
+			if panel, ok := s["panel"].(string); ok && panel != "" && panel != "profiles" {
+				inject := `<script>window.__savedPanel="` + panel + `";</script>`
+				html = strings.Replace(html, "</head>", inject+"</head>", 1)
+			}
+		}
+	}
+	w.Write([]byte(html))
 }
 
 func handleConnect(w http.ResponseWriter, r *http.Request) {
@@ -1893,6 +1992,27 @@ func handleExtensions(w http.ResponseWriter, r *http.Request) {
 		"extensions":      exts,
 		"extensions_path": extensionsDir(),
 	})
+}
+
+func handleSettings(w http.ResponseWriter, r *http.Request) {
+	settingsFile := filepath.Join(dataDir, "ui-settings.json")
+	if r.Method == http.MethodGet {
+		data, err := os.ReadFile(settingsFile)
+		if err != nil {
+			jsonOK(w, map[string]interface{}{})
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(data)
+		return
+	}
+	if r.Method == http.MethodPost || r.Method == http.MethodPut {
+		body, _ := io.ReadAll(r.Body)
+		os.WriteFile(settingsFile, body, 0644)
+		jsonOK(w, map[string]string{"status": "ok"})
+		return
+	}
+	jsonError(w, "Method not allowed", 405)
 }
 
 func handleOpenExtensionsFolder(w http.ResponseWriter, r *http.Request) {
@@ -2392,6 +2512,7 @@ func main() {
 	mux.HandleFunc("/api/proxy-list", withCORS(handleProxyList))
 	mux.HandleFunc("/api/extensions", withCORS(handleExtensions))
 	mux.HandleFunc("/api/open-extensions", withCORS(handleOpenExtensionsFolder))
+	mux.HandleFunc("/ui-settings", withCORS(handleSettings))
 	mux.HandleFunc("/api/marketplace/install", withCORS(handleMarketplaceInstall))
 	mux.HandleFunc("/api/marketplace/uninstall", withCORS(handleMarketplaceUninstall))
 	mux.HandleFunc("/api/license/activate", withCORS(handleLicenseActivate))
