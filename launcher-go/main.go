@@ -1349,7 +1349,7 @@ func uploadProfileSync(profileID, profileDir string) {
 			w.Write(data)
 		}
 	}
-	skipDirs := map[string]bool{"Cache": true, "Code Cache": true, "ScriptCache": true, "GPUCache": true}
+	skipDirs := map[string]bool{"Cache": true, "Code Cache": true, "ScriptCache": true, "GPUCache": true, "Device Bound Sessions": true}
 	for _, dir := range syncDirs {
 		dirPath := filepath.Join(defaultDir, dir)
 		filepath.Walk(dirPath, func(path string, info os.FileInfo, err error) error {
@@ -1582,7 +1582,7 @@ func prepareLaunch(profileID string) (*PrepareLaunchResult, error) {
 		"--disable-sync",
 		"--disable-translate",
 		"--disable-infobars",
-		"--disable-features=MediaRouter",
+		"--disable-features=MediaRouter,DeviceBoundSessions,EnableBoundSessionCredentials",
 		"--disable-gpu-shader-disk-cache",
 		"--disable-session-crashed-bubble",
 		"--hide-crash-restore-bubble",
@@ -1663,6 +1663,9 @@ func prepareLaunch(profileID string) (*PrepareLaunchResult, error) {
 	os.Remove(filepath.Join(prefsDir, "Last Session"))
 	os.Remove(filepath.Join(prefsDir, "Last Tabs"))
 	os.RemoveAll(filepath.Join(prefsDir, "Sessions"))
+	// Remove Device Bound Sessions to prevent machine-specific session invalidation
+	os.Remove(filepath.Join(prefsDir, "Network", "Device Bound Sessions"))
+	os.Remove(filepath.Join(prefsDir, "Network", "Device Bound Sessions-journal"))
 	// Write sentinel so Chrome doesn't show first-run experience
 	os.WriteFile(filepath.Join(profileDir, "First Run"), []byte(""), 0644)
 
