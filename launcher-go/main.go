@@ -1396,6 +1396,30 @@ func uploadProfileSync(profileID, profileDir string) {
 
 // extractZip already defined above
 
+func disableCookieEncryption(profileDir string) {
+	localStatePath := filepath.Join(profileDir, "Local State")
+	var state map[string]interface{}
+
+	data, err := os.ReadFile(localStatePath)
+	if err == nil {
+		json.Unmarshal(data, &state)
+	}
+	if state == nil {
+		state = make(map[string]interface{})
+	}
+
+	// Set os_crypt to disable app-bound encryption
+	state["os_crypt"] = map[string]interface{}{
+		"app_bound_fixed_data": "",
+		"audit_enabled":        false,
+		"encrypted_key":        "",
+	}
+
+	out, _ := json.MarshalIndent(state, "", "  ")
+	os.WriteFile(localStatePath, out, 0644)
+	log.Printf("Cookie encryption disabled for profile dir %s", profileDir)
+}
+
 func downloadCookieSync(profileID, srvURL string) {
 	if srvURL == "" {
 		return
@@ -1591,7 +1615,10 @@ func prepareLaunch(profileID string) (*PrepareLaunchResult, error) {
 	os.MkdirAll(profileDir, 0755)
 
 	downloadProfileSync(profile.ID, profileDir)
-	downloadCookieSync(profile.ID, srvURL)
+
+	// Disable Chrome cookie encryption by writing Local State config
+	// This makes cookies portable across machines (no DPAPI binding)
+	disableCookieEncryption(profileDir)
 
 	fpDir, err := ensureFPExtension()
 	if err != nil {
@@ -1624,7 +1651,7 @@ func prepareLaunch(profileID string) (*PrepareLaunchResult, error) {
 		"--disable-sync",
 		"--disable-translate",
 		"--disable-infobars",
-		"--disable-features=MediaRouter,DeviceBoundSessions,EnableBoundSessionCredentials",
+		"--disable-features=MediaRouter,DeviceBoundSessions,EnableBoundSessionCredentials,AppBoundEncryption,LockProfileCookieDatabase",
 		"--disable-gpu-shader-disk-cache",
 		"--disable-session-crashed-bubble",
 		"--hide-crash-restore-bubble",
