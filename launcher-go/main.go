@@ -1651,8 +1651,7 @@ func prepareLaunch(profileID string) (*PrepareLaunchResult, error) {
 		log.Printf("Local data exists for profile %s, using local (sync upload on close)", profile.ID)
 	}
 
-	// Disable newer Chrome encryption layers (preserve existing DPAPI key)
-	disableCookieEncryption(profileDir)
+	// Don't touch Local State - modifying it breaks Chrome's cookie decryption
 
 	fpDir, err := ensureFPExtension()
 	if err != nil {
@@ -1681,12 +1680,10 @@ func prepareLaunch(profileID string) (*PrepareLaunchResult, error) {
 		"--user-data-dir=" + profileDir,
 		"--no-first-run",
 		"--no-default-browser-check",
-		"--disable-background-networking",
 		"--disable-sync",
 		"--disable-translate",
 		"--disable-infobars",
-		"--disable-features=MediaRouter,DeviceBoundSessions,EnableBoundSessionCredentials,AppBoundEncryption,LockProfileCookieDatabase",
-		"--disable-gpu-shader-disk-cache",
+		"--disable-features=MediaRouter",
 		"--disable-session-crashed-bubble",
 		"--hide-crash-restore-bubble",
 	}
@@ -1774,9 +1771,6 @@ func prepareLaunch(profileID string) (*PrepareLaunchResult, error) {
 	os.Remove(filepath.Join(prefsDir, "Last Session"))
 	os.Remove(filepath.Join(prefsDir, "Last Tabs"))
 	os.RemoveAll(filepath.Join(prefsDir, "Sessions"))
-	// Remove Device Bound Sessions to prevent machine-specific session invalidation
-	os.Remove(filepath.Join(prefsDir, "Network", "Device Bound Sessions"))
-	os.Remove(filepath.Join(prefsDir, "Network", "Device Bound Sessions-journal"))
 	// Write sentinel so Chrome doesn't show first-run experience
 	os.WriteFile(filepath.Join(profileDir, "First Run"), []byte(""), 0644)
 
