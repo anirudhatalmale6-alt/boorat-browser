@@ -42,6 +42,7 @@ type Profile struct {
 	FolderID     string          `json:"folder_id"`
 	FolderName   string          `json:"folder_name"`
 	Proxy        string          `json:"proxy"`
+	ProxyMode    string          `json:"proxy_mode"`
 	WindowWidth  int             `json:"window_width"`
 	WindowHeight int             `json:"window_height"`
 	UserAgent    string          `json:"user_agent"`
@@ -1595,8 +1596,20 @@ func prepareLaunch(profileID string) (*PrepareLaunchResult, error) {
 		args = append(args, "--user-agent="+profile.UserAgent)
 	}
 
+	// Handle proxy mode: random picks from pool, custom uses the stored proxy
+	if profile.ProxyMode == "random" || profile.Proxy == "__RANDOM__" {
+		pool := loadDecryptedProxies()
+		if len(pool) > 0 {
+			profile.Proxy = pool[time.Now().UnixNano()%int64(len(pool))]
+			log.Printf("Random proxy assigned for profile %s: %s", profile.ID, profile.Proxy)
+		} else {
+			log.Printf("No proxies in pool for random assignment, launching without proxy")
+			profile.Proxy = ""
+		}
+	}
+
 	// If proxy has auth credentials, add proxy auth service worker to FP extension
-	if profile.Proxy != "" {
+	if profile.Proxy != "" && profile.Proxy != "__RANDOM__" {
 		parts := strings.SplitN(profile.Proxy, ":", 4)
 		if len(parts) >= 2 {
 			args = append(args, fmt.Sprintf("--proxy-server=%s:%s", parts[0], parts[1]))

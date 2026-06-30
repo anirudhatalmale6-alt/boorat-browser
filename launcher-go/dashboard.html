@@ -1695,7 +1695,7 @@ var App = (function() {
 
       var platform = nav.platform || 'Win32';
       var osLabel = platform === 'MacIntel' ? 'macOS' : (platform === 'Linux x86_64' ? 'Linux' : 'Windows');
-      var proxy = p.proxy || 'Direct';
+      var proxy = p.proxy === '__RANDOM__' ? 'PersonaX Proxy' : (p.proxy || 'Direct');
       if (proxy.length > 26) proxy = proxy.substring(0, 26) + '...';
       var res = (scr.width || '?') + 'x' + (scr.height || '?');
       var timezone = tz.id || tz.name || 'Auto';
@@ -1862,8 +1862,8 @@ function switchProfileTab(tab) {
     document.getElementById('modalTitle').textContent = 'Edit Profile';
     document.getElementById('saveProfileBtn').textContent = 'Save Changes';
     document.getElementById('profileName').value = p.name;
-    document.getElementById('profileProxy').value = p.proxy || '';
-    if (p.proxy && p.proxy.indexOf('PERSONAX:') === 0) {
+    document.getElementById('profileProxy').value = (p.proxy && p.proxy !== '__RANDOM__') ? p.proxy : '';
+    if (p.proxy === '__RANDOM__' || (p.proxy && p.proxy.indexOf('PERSONAX:') === 0)) {
       document.getElementById('profileProxyMode').value = 'personax';
     } else if (p.proxy) {
       document.getElementById('profileProxyMode').value = 'custom';
@@ -2526,17 +2526,7 @@ function switchProfileTab(tab) {
   function getProxyValue() {
     var mode = document.getElementById('profileProxyMode').value;
     if (mode === 'personax') {
-      if (personaxProxies.length) {
-        return personaxProxies[Math.floor(Math.random() * personaxProxies.length)];
-      }
-      toast('Proxy list not loaded. Retrying...', 'error');
-      loadProxyList();
-      var editId = document.getElementById('editProfileId').value;
-      if (editId) {
-        var existing = state.profiles.find(function(x) { return x.id === editId; });
-        if (existing && existing.proxy) return existing.proxy;
-      }
-      return '';
+      return '__RANDOM__';
     } else if (mode === 'custom') {
       return document.getElementById('profileProxy').value.trim();
     }

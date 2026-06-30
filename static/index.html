@@ -714,7 +714,15 @@ body {
       </div>
 
       <div class="form-group">
-        <label class="form-label">Proxy</label>
+        <label class="form-label">Proxy Mode</label>
+        <select class="form-select" id="pf-proxy-mode" onchange="toggleProxyInput()">
+          <option value="none">No Proxy (Direct)</option>
+          <option value="random">PersonaX Proxy (Random)</option>
+          <option value="custom">Custom Proxy</option>
+        </select>
+      </div>
+      <div class="form-group" id="custom-proxy-group" style="display:none;">
+        <label class="form-label">Custom Proxy</label>
         <input type="text" class="form-input" id="pf-proxy" placeholder="ip:port:user:pass" style="font-family: 'SF Mono', monospace;">
         <div class="form-hint">Format: ip:port or ip:port:username:password</div>
       </div>
@@ -1177,7 +1185,8 @@ function renderProfileCard(p) {
   const fp = p.fingerprint || {};
   const os = fpOs(fp);
   const browser = fpBrowser(p);
-  const proxyDisplay = p.proxy ? p.proxy : 'Direct (no proxy)';
+  const pm = p.proxy_mode || (p.proxy === '__RANDOM__' ? 'random' : (p.proxy ? 'custom' : 'none'));
+  const proxyDisplay = pm === 'random' ? 'PersonaX Proxy (Random)' : (pm === 'custom' && p.proxy ? p.proxy : 'Direct (no proxy)');
   const status = p.status || 'ready';
   return `
     <div class="profile-card">
@@ -1233,6 +1242,8 @@ function openProfileModal() {
   document.getElementById('pf-name').value = '';
   document.getElementById('pf-folder').value = '';
   document.getElementById('pf-proxy').value = '';
+  document.getElementById('pf-proxy-mode').value = 'random';
+  toggleProxyInput();
   document.getElementById('pf-status').value = 'ready';
   document.getElementById('pf-width').value = '1920';
   document.getElementById('pf-height').value = '1080';
@@ -1260,6 +1271,9 @@ function openEditProfile(id) {
   renderFolders();
   document.getElementById('pf-folder').value = p.folder_id || '';
   document.getElementById('pf-proxy').value = p.proxy || '';
+  const proxyMode = p.proxy_mode || (p.proxy ? 'custom' : 'none');
+  document.getElementById('pf-proxy-mode').value = proxyMode;
+  toggleProxyInput();
   document.getElementById('pf-status').value = p.status || 'ready';
   document.getElementById('pf-width').value = p.window_width || 1920;
   document.getElementById('pf-height').value = p.window_height || 1080;
@@ -1286,16 +1300,30 @@ function openEditProfile(id) {
   showModal('profile-modal');
 }
 
+function toggleProxyInput() {
+  const mode = document.getElementById('pf-proxy-mode').value;
+  document.getElementById('custom-proxy-group').style.display = mode === 'custom' ? '' : 'none';
+}
+
 function closeProfileModal() { hideModal('profile-modal'); }
 
 async function saveProfile() {
   const name = document.getElementById('pf-name').value.trim();
   if (!name) { toast('Profile name is required', 'error'); return; }
 
+  const proxyMode = document.getElementById('pf-proxy-mode').value;
+  let proxyVal = '';
+  if (proxyMode === 'custom') {
+    proxyVal = document.getElementById('pf-proxy').value.trim();
+  } else if (proxyMode === 'random') {
+    proxyVal = '__RANDOM__';
+  }
+
   const data = {
     name,
     folder_id: document.getElementById('pf-folder').value || null,
-    proxy: document.getElementById('pf-proxy').value.trim(),
+    proxy: proxyVal,
+    proxy_mode: proxyMode,
     status: document.getElementById('pf-status').value,
     window_width: parseInt(document.getElementById('pf-width').value) || 1920,
     window_height: parseInt(document.getElementById('pf-height').value) || 1080,
