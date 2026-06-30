@@ -2020,10 +2020,16 @@ func handleElectronNotify(w http.ResponseWriter, r *http.Request) {
 	} else if req.Action == "stopped" {
 		mu.Lock()
 		delete(processes, req.ProfileID)
+		srv := serverURL
 		mu.Unlock()
 		reportActivity("profile_stopped", "Profile "+req.ProfileID+" stopped")
 		profileDir := filepath.Join(dataDir, "profiles", req.ProfileID)
-		go uploadProfileSync(req.ProfileID, profileDir)
+		go func() {
+			uploadProfileSync(req.ProfileID, profileDir)
+			if srv != "" {
+				unlockProfile(srv, req.ProfileID)
+			}
+		}()
 	}
 
 	jsonOK(w, map[string]string{"status": "ok"})

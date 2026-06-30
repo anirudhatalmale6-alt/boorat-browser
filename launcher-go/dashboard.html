@@ -1768,14 +1768,47 @@ var App = (function() {
 
   // Launch / Stop
   function launchProfile(id) {
+    // Check if profile is locked by someone else
+    var profile = state.profiles.find(function(p) { return p.id === id; });
+    if (profile && profile.locked_by) {
+      toast('Profile is already opened by ' + profile.locked_by, 'error');
+      return;
+    }
+
+    // Lock profile on server before launching
+    function lockBeforeLaunch() {
+      return fetch('/api/profiles/' + id + '/lock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user: window.personax_username || 'Unknown' })
+      }).then(function(r) {
+        if (r.status === 409) return r.json().then(function(d) { throw new Error('Profile is already opened by ' + (d.locked_by || 'someone')); });
+        return r.json();
+      });
+    }
+
+    function unlockProfile() {
+      fetch('/api/profiles/' + id + '/unlock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}'
+      }).catch(function() {});
+    }
+
     // If running inside Electron, use Electron's process spawning (avoids job object issues)
     if (window.personax && window.personax.isElectron) {
-      api('POST', '/api/prepare-launch', { profile_id: id })
+      lockBeforeLaunch()
+        .then(function() {
+          return api('POST', '/api/prepare-launch', { profile_id: id });
+        })
         .then(function(data) {
           return window.personax.launchChrome(data.chrome_path, data.args, data.profile_id).then(function(result) {
-            if (!result.ok) throw new Error(result.error || 'Electron launch failed');
+            if (!result.ok) { unlockProfile(); throw new Error(result.error || 'Electron launch failed'); }
             // Notify Go server about the PID for tracking
             api('POST', '/api/electron-notify', { profile_id: id, pid: result.pid, action: 'launched' });
+            // Auto-unlock when profile closes
+            window._profileUnlocks = window._profileUnlocks || {};
+            window._profileUnlocks[id] = unlockProfile;
             var msg = 'Profile launched';
             var exts = data.extensions_loaded || [];
             if (exts.length > 0) {
@@ -1783,10 +1816,12 @@ var App = (function() {
             }
             toast(msg, 'success');
             pollStatus();
+            refresh();
           });
         })
         .catch(function(err) {
           if (err.message.indexOf('not downloaded') >= 0) {
+            unlockProfile();
             toast('Chrome is downloading, please wait... Check the status bar at the top for progress.', 'error'); downloadChromium();
           } else {
             toast('Launch failed: ' + err.message, 'error');
