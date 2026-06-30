@@ -1289,7 +1289,7 @@ func downloadProfileSync(profileID, profileDir string) {
 	if srvURL == "" {
 		return
 	}
-	fastClient := &http.Client{Timeout: 3 * time.Second}
+	fastClient := &http.Client{Timeout: 30 * time.Second}
 	resp, err := fastClient.Get(srvURL + "/api/profiles/" + profileID + "/sync")
 	if err != nil || resp.StatusCode != 200 {
 		if resp != nil {
@@ -1327,6 +1327,10 @@ func uploadProfileSync(profileID, profileDir string) {
 		"Login Data", "Login Data-journal",
 		"Web Data", "Web Data-journal",
 		"Preferences", "Secure Preferences",
+		"History", "History-journal",
+		"Favicons", "Favicons-journal",
+		"Top Sites", "Top Sites-journal",
+		"Visited Links",
 	}
 	syncDirs := []string{"Local Storage", "Session Storage", "IndexedDB"}
 
@@ -1622,11 +1626,9 @@ func prepareLaunch(profileID string) (*PrepareLaunchResult, error) {
 		}
 	}
 
-	// Clean ALL session restore data to prevent duplicate tabs
+	// Clean session restore data that causes duplicate tabs (but keep Preferences for logins)
 	prefsDir := filepath.Join(profileDir, "Default")
 	os.MkdirAll(prefsDir, 0755)
-	os.Remove(filepath.Join(prefsDir, "Preferences"))
-	os.Remove(filepath.Join(prefsDir, "Secure Preferences"))
 	os.Remove(filepath.Join(prefsDir, "Current Session"))
 	os.Remove(filepath.Join(prefsDir, "Current Tabs"))
 	os.Remove(filepath.Join(prefsDir, "Last Session"))
@@ -2376,6 +2378,15 @@ func handleProxy(w http.ResponseWriter, r *http.Request) {
 	// Forward relevant headers
 	if ct := r.Header.Get("Content-Type"); ct != "" {
 		proxyReq.Header.Set("Content-Type", ct)
+	}
+	// Forward license key for profile isolation
+	if lk := r.Header.Get("X-License-Key"); lk != "" {
+		proxyReq.Header.Set("X-License-Key", lk)
+	} else {
+		// Auto-inject license key from local file if dashboard didn't send it
+		if keyBytes, err := os.ReadFile(licenseFilePath()); err == nil {
+			proxyReq.Header.Set("X-License-Key", strings.TrimSpace(string(keyBytes)))
+		}
 	}
 
 	proxyClient := &http.Client{Timeout: 60 * time.Second}
