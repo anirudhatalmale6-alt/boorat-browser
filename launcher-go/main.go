@@ -1324,13 +1324,13 @@ func uploadProfileSync(profileID, profileDir string) {
 	}
 
 	syncFiles := []string{
-		"Cookies", "Cookies-journal",
-		"Login Data", "Login Data-journal",
-		"Web Data", "Web Data-journal",
+		"Cookies", "Cookies-journal", "Cookies-wal", "Cookies-shm",
+		"Login Data", "Login Data-journal", "Login Data-wal", "Login Data-shm",
+		"Web Data", "Web Data-journal", "Web Data-wal", "Web Data-shm",
 		"Preferences", "Secure Preferences",
-		"History", "History-journal",
-		"Favicons", "Favicons-journal",
-		"Top Sites", "Top Sites-journal",
+		"History", "History-journal", "History-wal", "History-shm",
+		"Favicons", "Favicons-journal", "Favicons-wal", "Favicons-shm",
+		"Top Sites", "Top Sites-journal", "Top Sites-wal", "Top Sites-shm",
 		"Visited Links",
 	}
 	syncDirs := []string{"Local Storage", "Session Storage", "IndexedDB", "Network", "Service Worker"}
