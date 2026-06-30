@@ -1515,26 +1515,6 @@ func prepareLaunch(profileID string) (*PrepareLaunchResult, error) {
 		return nil, fmt.Errorf("not connected to server")
 	}
 
-	// Lock profile before launching
-	lockUser := getMachineID()
-	if keyBytes, err := os.ReadFile(licenseFilePath()); err == nil {
-		lockUser = strings.TrimSpace(string(keyBytes))
-		if len(lockUser) > 12 {
-			lockUser = lockUser[:12]
-		}
-	}
-	lockPayload, _ := json.Marshal(map[string]string{"user": lockUser})
-	lockResp, err := httpClient.Post(srvURL+"/api/profiles/"+profileID+"/lock", "application/json", bytes.NewReader(lockPayload))
-	if err == nil {
-		lockBody, _ := io.ReadAll(lockResp.Body)
-		lockResp.Body.Close()
-		if lockResp.StatusCode == 409 {
-			var lockErr map[string]string
-			json.Unmarshal(lockBody, &lockErr)
-			return nil, fmt.Errorf("profile is already opened by %s", lockErr["locked_by"])
-		}
-	}
-
 	profileURL := srvURL + "/api/profiles/" + profileID
 	log.Printf("Fetching profile from %s", profileURL)
 
@@ -1703,9 +1683,67 @@ func prepareLaunch(profileID string) (*PrepareLaunchResult, error) {
 	}, nil
 }
 
+func getLockUserName() string {
+	name := os.Getenv("USERNAME")
+	if name == "" {
+		name = os.Getenv("USER")
+	}
+	if name == "" {
+		name = os.Getenv("COMPUTERNAME")
+	}
+	if name == "" {
+		name, _ = os.Hostname()
+	}
+	if name == "" {
+		name = getMachineID()
+		if len(name) > 8 {
+			name = name[:8]
+		}
+	}
+	return name
+}
+
+func lockProfile(srvURL, profileID string) error {
+	lockUser := getLockUserName()
+	lockPayload, _ := json.Marshal(map[string]string{"user": lockUser})
+	lockResp, err := httpClient.Post(srvURL+"/api/profiles/"+profileID+"/lock", "application/json", bytes.NewReader(lockPayload))
+	if err != nil {
+		return nil
+	}
+	lockBody, _ := io.ReadAll(lockResp.Body)
+	lockResp.Body.Close()
+	if lockResp.StatusCode == 409 {
+		var lockErr map[string]string
+		json.Unmarshal(lockBody, &lockErr)
+		return fmt.Errorf("profile is already opened by %s", lockErr["locked_by"])
+	}
+	return nil
+}
+
+func unlockProfile(srvURL, profileID string) {
+	resp, err := httpClient.Post(srvURL+"/api/profiles/"+profileID+"/unlock", "application/json", bytes.NewReader([]byte("{}")))
+	if err == nil {
+		resp.Body.Close()
+		log.Printf("Profile %s unlocked", profileID)
+	}
+}
+
 func launchProfile(profileID string) (*LaunchResult, error) {
+	// Lock profile before doing anything
+	mu.Lock()
+	srvURL := serverURL
+	mu.Unlock()
+	if srvURL != "" {
+		if err := lockProfile(srvURL, profileID); err != nil {
+			return nil, err
+		}
+	}
+
 	prepared, err := prepareLaunch(profileID)
 	if err != nil {
+		if srvURL != "" {
+			unlockProfile(srvURL, profileID)
+		}
 		return nil, err
 	}
 
@@ -1743,6 +1781,9 @@ func launchProfile(profileID string) (*LaunchResult, error) {
 		if chromeLog != nil {
 			chromeLog.Close()
 		}
+		if srvURL != "" {
+			unlockProfile(srvURL, prepared.ProfileID)
+		}
 		return nil, fmt.Errorf("start chrome: %v", err)
 	}
 
@@ -1766,16 +1807,11 @@ func launchProfile(profileID string) (*LaunchResult, error) {
 		log.Printf("Profile %s closed, syncing data...", pID)
 		uploadProfileSync(pID, pDir)
 		log.Printf("Profile %s sync complete", pID)
-		// Unlock profile
 		mu.Lock()
 		srv := serverURL
 		mu.Unlock()
 		if srv != "" {
-			unlockResp, err := httpClient.Post(srv+"/api/profiles/"+pID+"/unlock", "application/json", bytes.NewReader([]byte("{}")))
-			if err == nil {
-				unlockResp.Body.Close()
-				log.Printf("Profile %s unlocked", pID)
-			}
+			unlockProfile(srv, pID)
 		}
 	}()
 
