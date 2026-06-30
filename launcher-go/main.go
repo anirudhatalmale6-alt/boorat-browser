@@ -1308,6 +1308,25 @@ func downloadProfileSync(profileID, profileDir string) {
 	io.Copy(f, resp.Body)
 	f.Close()
 
+	// Extract to Default/, but handle __LOCAL_STATE__ specially (goes to profileDir)
+	zr, err := zip.OpenReader(tmpFile)
+	if err == nil {
+		for _, zf := range zr.File {
+			if zf.Name == "__LOCAL_STATE__" {
+				rc, err := zf.Open()
+				if err == nil {
+					data, _ := io.ReadAll(rc)
+					rc.Close()
+					// Only restore Local State if no local one exists (preserve local DPAPI key)
+					localPath := filepath.Join(profileDir, "Local State")
+					if _, err := os.Stat(localPath); os.IsNotExist(err) {
+						os.WriteFile(localPath, data, 0644)
+					}
+				}
+			}
+		}
+		zr.Close()
+	}
 	_ = extractZip(tmpFile, filepath.Join(profileDir, "Default"))
 	os.Remove(tmpFile)
 	log.Printf("Downloaded sync data for profile %s", profileID)
@@ -1372,6 +1391,13 @@ func uploadProfileSync(profileID, profileDir string) {
 			return nil
 		})
 	}
+	// Also sync Local State (contains DPAPI encryption key for cookies)
+	localStatePath := filepath.Join(profileDir, "Local State")
+	if data, err := os.ReadFile(localStatePath); err == nil {
+		w, _ := zw.Create("__LOCAL_STATE__")
+		w.Write(data)
+	}
+
 	zw.Close()
 	zf.Close()
 
@@ -1397,27 +1423,27 @@ func uploadProfileSync(profileID, profileDir string) {
 // extractZip already defined above
 
 func disableCookieEncryption(profileDir string) {
+	// Only remove app_bound_fixed_data to disable newer Chrome encryption layers
+	// NEVER touch encrypted_key - that's the DPAPI key Chrome needs to read existing cookies
 	localStatePath := filepath.Join(profileDir, "Local State")
-	var state map[string]interface{}
-
 	data, err := os.ReadFile(localStatePath)
-	if err == nil {
-		json.Unmarshal(data, &state)
+	if err != nil {
+		return
 	}
-	if state == nil {
-		state = make(map[string]interface{})
+	var state map[string]interface{}
+	if json.Unmarshal(data, &state) != nil {
+		return
 	}
-
-	// Set os_crypt to disable app-bound encryption
-	state["os_crypt"] = map[string]interface{}{
-		"app_bound_fixed_data": "",
-		"audit_enabled":        false,
-		"encrypted_key":        "",
+	osCrypt, ok := state["os_crypt"].(map[string]interface{})
+	if !ok {
+		return
 	}
-
+	// Only disable app-bound encryption, preserve the DPAPI key
+	delete(osCrypt, "app_bound_fixed_data")
+	osCrypt["audit_enabled"] = false
+	state["os_crypt"] = osCrypt
 	out, _ := json.MarshalIndent(state, "", "  ")
 	os.WriteFile(localStatePath, out, 0644)
-	log.Printf("Cookie encryption disabled for profile dir %s", profileDir)
 }
 
 func downloadCookieSync(profileID, srvURL string) {
