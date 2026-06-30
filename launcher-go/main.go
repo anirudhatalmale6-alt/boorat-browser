@@ -1332,7 +1332,7 @@ func uploadProfileSync(profileID, profileDir string) {
 		"Top Sites", "Top Sites-journal",
 		"Visited Links",
 	}
-	syncDirs := []string{"Local Storage", "Session Storage", "IndexedDB"}
+	syncDirs := []string{"Local Storage", "Session Storage", "IndexedDB", "Network", "Service Worker"}
 
 	tmpFile := filepath.Join(profileDir, "_sync_upload.zip")
 	zf, err := os.Create(tmpFile)
@@ -1348,10 +1348,20 @@ func uploadProfileSync(profileID, profileDir string) {
 			w.Write(data)
 		}
 	}
+	skipDirs := map[string]bool{"Cache": true, "Code Cache": true, "ScriptCache": true, "GPUCache": true}
 	for _, dir := range syncDirs {
 		dirPath := filepath.Join(defaultDir, dir)
 		filepath.Walk(dirPath, func(path string, info os.FileInfo, err error) error {
-			if err != nil || info.IsDir() {
+			if err != nil {
+				return nil
+			}
+			if info.IsDir() {
+				if skipDirs[info.Name()] {
+					return filepath.SkipDir
+				}
+				return nil
+			}
+			if info.Size() > 50*1024*1024 {
 				return nil
 			}
 			rel, _ := filepath.Rel(defaultDir, path)
