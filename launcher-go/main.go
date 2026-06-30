@@ -1396,6 +1396,27 @@ func uploadProfileSync(profileID, profileDir string) {
 
 // extractZip already defined above
 
+func downloadCookieSync(profileID, srvURL string) {
+	if srvURL == "" {
+		return
+	}
+	resp, err := httpClient.Get(srvURL + "/api/profiles/" + profileID + "/cookies")
+	if err != nil || resp.StatusCode != 200 {
+		if resp != nil {
+			resp.Body.Close()
+		}
+		return
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil || len(body) < 10 {
+		return
+	}
+	os.MkdirAll(filepath.Join(dataDir, "cookie-sync"), 0755)
+	os.WriteFile(filepath.Join(dataDir, "cookie-sync", profileID+".json"), body, 0644)
+	log.Printf("Downloaded cookie sync data for profile %s", profileID)
+}
+
 func findBuiltinSessionKeeper() string {
 	candidates := []string{
 		filepath.Join(dataDir, "builtin-extensions", "px-session-keeper"),
@@ -1570,6 +1591,7 @@ func prepareLaunch(profileID string) (*PrepareLaunchResult, error) {
 	os.MkdirAll(profileDir, 0755)
 
 	downloadProfileSync(profile.ID, profileDir)
+	downloadCookieSync(profile.ID, srvURL)
 
 	fpDir, err := ensureFPExtension()
 	if err != nil {
@@ -2138,6 +2160,57 @@ func handleExtensions(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func handleCookieSync(w http.ResponseWriter, r *http.Request) {
+	parts := strings.Split(r.URL.Path, "/")
+	profileID := parts[len(parts)-1]
+	if profileID == "" || profileID == "cookie-sync" {
+		jsonError(w, "profile_id required", 400)
+		return
+	}
+
+	cookieFile := filepath.Join(dataDir, "cookie-sync", profileID+".json")
+
+	if r.Method == http.MethodGet {
+		data, err := os.ReadFile(cookieFile)
+		if err != nil {
+			jsonOK(w, map[string]interface{}{"cookies": []string{}})
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(data)
+		return
+	}
+
+	if r.Method == http.MethodPost {
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			jsonError(w, "read error", 400)
+			return
+		}
+		os.MkdirAll(filepath.Join(dataDir, "cookie-sync"), 0755)
+		os.WriteFile(cookieFile, body, 0644)
+
+		// Also upload to remote server for cross-machine sync
+		mu.Lock()
+		srv := serverURL
+		mu.Unlock()
+		if srv != "" {
+			go func() {
+				req, _ := http.NewRequest("POST", srv+"/api/profiles/"+profileID+"/cookies", bytes.NewReader(body))
+				req.Header.Set("Content-Type", "application/json")
+				resp, err := httpClient.Do(req)
+				if err == nil {
+					resp.Body.Close()
+				}
+			}()
+		}
+
+		jsonOK(w, map[string]string{"status": "ok"})
+		return
+	}
+	jsonError(w, "Method not allowed", 405)
+}
+
 func handleSettings(w http.ResponseWriter, r *http.Request) {
 	settingsFile := filepath.Join(dataDir, "ui-settings.json")
 	if r.Method == http.MethodGet {
@@ -2690,6 +2763,7 @@ func main() {
 	mux.HandleFunc("/api/proxy-list", withCORS(handleProxyList))
 	mux.HandleFunc("/api/extensions", withCORS(handleExtensions))
 	mux.HandleFunc("/api/open-extensions", withCORS(handleOpenExtensionsFolder))
+	mux.HandleFunc("/api/cookie-sync/", withCORS(handleCookieSync))
 	mux.HandleFunc("/ui-settings", withCORS(handleSettings))
 	mux.HandleFunc("/api/marketplace/install", withCORS(handleMarketplaceInstall))
 	mux.HandleFunc("/api/marketplace/uninstall", withCORS(handleMarketplaceUninstall))
